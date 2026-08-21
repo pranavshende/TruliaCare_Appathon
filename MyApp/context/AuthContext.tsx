@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiFetch, setAuthToken, getAuthToken } from '../services/api';
 
 type User = {
@@ -12,27 +12,27 @@ interface AuthContextType {
   user: User;
   setUser: (user: User) => void;
   isLoading: boolean;
-  logout: () => void;
+  logout: () => Promise<void>;
   token: string | null;
-  setToken: (token: string | null) => void;
+  setToken: (token: string | null) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   setUser: () => {},
   isLoading: true,
-  logout: () => {},
+  logout: async () => {},
   token: null,
-  setToken: () => {},
+  setToken: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User>(null);
-  const [token, setTokenState] = useState<string | null>(getAuthToken());
+  const [token, setTokenState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const setToken = (newToken: string | null) => {
-    setAuthToken(newToken);
+  const setToken = async (newToken: string | null) => {
+    await setAuthToken(newToken);
     setTokenState(newToken);
   };
 
@@ -42,18 +42,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (e) {
       console.error(e);
     } finally {
-      setToken(null);
+      await setToken(null);
       setUser(null);
     }
   };
 
   useEffect(() => {
     const initAuth = async () => {
-      const currentToken = getAuthToken();
+      const currentToken = await getAuthToken();
       if (!currentToken) {
         setIsLoading(false);
         return;
       }
+      setTokenState(currentToken);
 
       try {
         const res = await apiFetch('/auth/me');
@@ -62,14 +63,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (data.isAuthenticated) {
             setUser(data.user);
           } else {
-            setToken(null);
+            await setToken(null);
           }
         } else {
-          setToken(null);
+          await setToken(null);
         }
       } catch (err) {
         console.error(err);
-        setToken(null);
+        await setToken(null);
       } finally {
         setIsLoading(false);
       }

@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "commonjs",
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["prisma.config.ts"]
+}

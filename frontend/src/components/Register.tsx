@@ -3,9 +3,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
 
-export default function Login() {
+export default function Register() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoadingLocal, setIsLoadingLocal] = useState(false);
   const [error, setError] = useState('');
   const { setUser, setToken } = useAuth();
@@ -14,12 +16,23 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
     setIsLoadingLocal(true);
 
     try {
-      const res = await apiFetch('/auth/login', {
+      const res = await apiFetch('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ name, email, password }),
       });
 
       const data = await res.json();
@@ -28,7 +41,7 @@ export default function Login() {
         setUser(data.user);
         navigate('/dashboard');
       } else {
-        setError(data.message || 'Invalid credentials');
+        setError(data.message || 'Registration failed');
       }
     } catch (err) {
       setError('Network error');
@@ -42,18 +55,31 @@ export default function Login() {
       <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
+            Create your account
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
+            <div>
+              <label htmlFor="name" className="sr-only">Full Name</label>
+              <input
+                id="name"
+                type="text"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Full Name"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                disabled={isLoadingLocal}
+              />
+            </div>
             <div>
               <label htmlFor="email-address" className="sr-only">Email address</label>
               <input
                 id="email-address"
                 type="email"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border-t-0 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Email address"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -66,10 +92,23 @@ export default function Login() {
                 id="password"
                 type="password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border-t-0 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                disabled={isLoadingLocal}
+              />
+            </div>
+            <div>
+              <label htmlFor="confirm-password" className="sr-only">Confirm Password</label>
+              <input
+                id="confirm-password"
+                type="password"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border-t-0 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
                 disabled={isLoadingLocal}
               />
             </div>
@@ -83,13 +122,13 @@ export default function Login() {
               disabled={isLoadingLocal}
               className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white transition duration-150 ease-in-out ${isLoadingLocal ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'}`}
             >
-              {isLoadingLocal ? 'Signing in...' : 'Sign In'}
+              {isLoadingLocal ? 'Registering...' : 'Register'}
             </button>
           </div>
           
           <div className="text-sm text-center">
-            <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
-              Need an account? Register
+            <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
+              Already have an account? Sign in
             </Link>
           </div>
         </form>

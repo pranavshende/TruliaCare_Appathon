@@ -1,9 +1,8 @@
 const express = require('express');
 const cors = require('cors');
-const session = require('express-session');
+const helmet = require('helmet');
 const passport = require('passport');
 const prisma = require('./prismaClient');
-const { PrismaSessionStore } = require('@quixo3/prisma-session-store');
 require('dotenv').config();
 
 const app = express();
@@ -13,36 +12,16 @@ const PORT = process.env.PORT || 5000;
 require('./config/passport')(passport);
 
 // Middleware
+app.use(helmet());
 app.use(cors({
-  origin: 'http://localhost:5173', // Vite default port
+  origin: ['http://localhost:5173', 'http://localhost:8081', 'exp://localhost:8081', 'http://10.0.2.2:8081'], // Typical Expo/Web ports
   credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Express Session
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || 'supersecret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 1 week
-    },
-    store: new PrismaSessionStore(
-      prisma,
-      {
-        checkPeriod: 2 * 60 * 1000,  // ms
-        dbRecordIdIsSessionId: true,
-        dbRecordIdFunction: undefined,
-      }
-    )
-  })
-);
-
 // Passport Middleware
 app.use(passport.initialize());
-app.use(passport.session());
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));

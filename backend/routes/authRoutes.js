@@ -1,14 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt');
+const argon2 = require('argon2');
 const passport = require('passport');
+const jwt = require('jsonwebtoken');
 const prisma = require('../prismaClient');
+
+const generateToken = (user) => {
+  return jwt.sign(
+    { id: user.id, role: user.role },
+    process.env.JWT_SECRET || 'fallback_secret_do_not_use_in_prod',
+    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+  );
+};
 
 // Register Handle
 router.post('/register', async (req, res) => {
-  const { email, password } = req.body;
+  const { name, email, password } = req.body;
   if (!email || !password) {
-    return res.status(400).json({ message: 'Please fill in all fields' });
+    return res.status(400).json({ success: false, message: 'Please fill in all required fields' });
   }
 
   try {
@@ -17,58 +26,62 @@ router.post('/register', async (req, res) => {
     });
 
     if (existingUser) {
-      return res.status(400).json({ message: 'Email is already registered' });
+      return res.status(409).json({ success: false, message: 'Email is already registered' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await argon2.hash(password);
     const newUser = await prisma.user.create({
       data: {
+        name,
         email: email.toLowerCase(),
         password: hashedPassword
       }
     });
 
-    // Log the user in after registration
-    req.login(newUser, (err) => {
-      if (err) throw err;
-      res.json({ message: 'Registered and logged in successfully', user: { id: newUser.id, email: newUser.email } });
+    const token = generateToken(newUser);
+    const { password: _, ...userWithoutPassword } = newUser;
+
+    res.json({
+      success: true,
+      message: 'Registered successfully',
+      user: userWithoutPassword,
+      token
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server Error' });
   }
 });
 
 // Login Handle
 router.post('/login', (req, res, next) => {
-  passport.authenticate('local', (err, user, info) => {
-    if (err) return res.status(500).json({ message: 'Server error' });
-    if (!user) return res.status(400).json({ message: info.message || 'Login failed' });
+  passport.authenticate('local', { session: false }, (err, user, info) => {
+    if (err) return res.status(500).json({ success: false, message: 'Server error' });
+    if (!user) return res.status(401).json({ success: false, message: info?.message || 'Invalid credentials' });
     
-    req.login(user, (err) => {
-      if (err) return res.status(500).json({ message: 'Server error' });
-      return res.json({ message: 'Logged in successfully', user: { id: user.id, email: user.email } });
+    const token = generateToken(user);
+    
+    return res.json({
+      success: true,
+      message: 'Logged in successfully',
+      user,
+      token
     });
   })(req, res, next);
 });
 
-// Logout Handle
-router.post('/logout', (req, res, next) => {
-  req.logout((err) => {
-    if (err) { return next(err); }
-    req.session.destroy(() => {
-      res.clearCookie('connect.sid');
-      res.json({ message: 'Logged out successfully' });
-    });
-  });
+// Logout Handle (Stateless)
+router.post('/logout', (req, res) => {
+  // In a stateless JWT architecture, the client removes the token.
+  res.json({ success: true, message: 'Logged out successfully' });
 });
 
 // Check Current User Handle
-router.get('/me', (req, res) => {
-  if (req.isAuthenticated()) {
-    res.json({ isAuthenticated: true, user: { id: req.user.id, email: req.user.email } });
+router.get('/me', passport.authenticate('jwt', { session: false }), (req, res) => {
+  if (req.user) {
+    res.json({ success: true, isAuthenticated: true, user: req.user });
   } else {
-    res.json({ isAuthenticated: false, user: null });
+    res.status(401).json({ success: false, isAuthenticated: false, user: null });
   }
 });
 
