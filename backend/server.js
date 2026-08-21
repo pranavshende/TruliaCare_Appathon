@@ -14,7 +14,13 @@ require('./config/passport')(passport);
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:8081', 'exp://localhost:8081', 'http://10.0.2.2:8081'], // Typical Expo/Web ports
+  origin: [
+    'http://localhost:5173', 
+    'http://localhost:8081', 
+    'exp://localhost:8081', 
+    'http://10.0.2.2:8081',
+    'https://frontappathon.pranavshende.online'
+  ],
   credentials: true
 }));
 app.use(express.json());
