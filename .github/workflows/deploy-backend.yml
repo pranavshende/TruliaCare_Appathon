@@ -1,0 +1,70 @@
+name: Deploy Backend to EC2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
+
+concurrency:
+  group: backend-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_PORT }}
+          script_stop: true
+
+          script: |
+            set -e
+
+            echo "================================"
+            echo "Starting TruliaCare deployment"
+            echo "================================"
+
+            cd /home/ubuntu/TruliaCare_Appathon
+
+            echo "Fetching latest code..."
+            git fetch origin main
+
+            echo "Updating server..."
+            git reset --hard origin/main
+
+            cd /home/ubuntu/TruliaCare_Appathon/backend
+
+            echo "Installing dependencies..."
+            npm ci
+
+            echo "Generating Prisma client..."
+            npx prisma generate
+
+            echo "Running database migrations..."
+            npx prisma migrate deploy
+
+            echo "Restarting backend..."
+            pm2 restart truliacare-backend --update-env
+
+            echo "Checking PM2..."
+            pm2 status
+
+            echo "Testing local backend..."
+            curl -f http://localhost:5000
+
+            echo "Testing public HTTPS endpoint..."
+            curl -f https://appathon.pranavshende.online
+
+            echo "================================"
+            echo "Deployment completed successfully"
+            echo "================================"
