@@ -29,41 +29,145 @@ jobs:
           script: |
             set -e
 
-            echo "================================"
-            echo "Starting TruliaCare deployment"
-            echo "================================"
+            echo "========================================"
+            echo "Starting TruliaCare backend deployment"
+            echo "========================================"
+
+            # ----------------------------------------
+            # 1. Update repository
+            # ----------------------------------------
 
             cd /home/ubuntu/TruliaCare_Appathon
 
             echo "Fetching latest code..."
             git fetch origin main
 
-            echo "Updating server..."
+            echo "Updating server to latest main..."
             git reset --hard origin/main
 
+            # ----------------------------------------
+            # 2. Backend directory
+            # ----------------------------------------
+
             cd /home/ubuntu/TruliaCare_Appathon/backend
+
+            # ----------------------------------------
+            # 3. Install dependencies
+            # ----------------------------------------
 
             echo "Installing dependencies..."
             npm ci
 
+            # ----------------------------------------
+            # 4. Generate Prisma Client
+            # ----------------------------------------
+
             echo "Generating Prisma client..."
             npx prisma generate
+
+            # ----------------------------------------
+            # 5. Run database migrations
+            # ----------------------------------------
 
             echo "Running database migrations..."
             npx prisma migrate deploy
 
+            # ----------------------------------------
+            # 6. Restart backend
+            # ----------------------------------------
+
             echo "Restarting backend..."
             pm2 restart truliacare-backend --update-env
 
+            # ----------------------------------------
+            # 7. Give Node.js time to start
+            # ----------------------------------------
+
+            echo "Waiting for backend to start..."
+
+            sleep 2
+
+            # ----------------------------------------
+            # 8. Health check with retries
+            # ----------------------------------------
+
+            BACKEND_READY=false
+
+            for i in {1..10}; do
+
+              echo "Health check attempt $i/10..."
+
+              if curl -fsS http://localhost:5000 > /dev/null; then
+                echo "Backend is healthy!"
+                BACKEND_READY=true
+                break
+              fi
+
+              echo "Backend is not ready yet..."
+              sleep 2
+
+            done
+
+            # ----------------------------------------
+            # 9. If backend failed, show logs
+            # ----------------------------------------
+
+            if [ "$BACKEND_READY" = false ]; then
+
+              echo "========================================"
+              echo "BACKEND FAILED TO START"
+              echo "========================================"
+
+              echo "PM2 status:"
+              pm2 status
+
+              echo "Recent backend logs:"
+              pm2 logs truliacare-backend --lines 50 --nostream
+
+              exit 1
+
+            fi
+
+            # ----------------------------------------
+            # 10. Verify PM2
+            # ----------------------------------------
+
             echo "Checking PM2..."
+
             pm2 status
 
-            echo "Testing local backend..."
-            curl -f http://localhost:5000
+            # ----------------------------------------
+            # 11. Verify Nginx
+            # ----------------------------------------
+
+            echo "Checking Nginx configuration..."
+
+            sudo nginx -t
+
+            # ----------------------------------------
+            # 12. Test public HTTPS endpoint
+            # ----------------------------------------
 
             echo "Testing public HTTPS endpoint..."
-            curl -f https://appathon.pranavshende.online
 
-            echo "================================"
-            echo "Deployment completed successfully"
-            echo "================================"
+            if curl -fsS https://appathon.pranavshende.online > /dev/null; then
+              echo "Public HTTPS endpoint is healthy!"
+            else
+              echo "WARNING: Public HTTPS health check failed."
+              echo "Backend itself is running, but HTTPS check failed."
+              exit 1
+            fi
+
+            # ----------------------------------------
+            # 13. Deployment complete
+            # ----------------------------------------
+
+            echo "========================================"
+            echo "DEPLOYMENT SUCCESSFUL"
+            echo "========================================"
+
+            echo "Backend:"
+            echo "https://appathon.pranavshende.online"
+
+            echo "PM2:"
+            pm2 status
