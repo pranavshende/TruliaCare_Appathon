@@ -56,7 +56,7 @@ router.post('/register', async (req, res) => {
 // Login Handle
 router.post('/login', (req, res, next) => {
   passport.authenticate('local', { session: false }, (err, user, info) => {
-    if (err) return res.status(500).json({ success: false, message: 'Server error' });
+    if (err) return res.status(500).json({ success: false, message: 'Server error', error: err.message || err.toString() });
     if (!user) return res.status(401).json({ success: false, message: info?.message || 'Invalid credentials' });
     
     const token = generateToken(user);
