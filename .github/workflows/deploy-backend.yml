@@ -25,6 +25,8 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: ${{ secrets.EC2_PORT }}
+          timeout: 60s
+          command_timeout: 15m
 
           script: |
             set -e
@@ -77,52 +79,61 @@ jobs:
             # ----------------------------------------
 
             echo "Restarting backend..."
+
             pm2 restart truliacare-backend --update-env
 
             # ----------------------------------------
-            # 7. Give Node.js time to start
+            # 7. Wait for Node.js
             # ----------------------------------------
 
             echo "Waiting for backend to start..."
 
-            sleep 2
+            sleep 3
 
             # ----------------------------------------
-            # 8. Health check with retries
+            # 8. Backend health check
             # ----------------------------------------
 
             BACKEND_READY=false
 
-            for i in {1..10}; do
+            for i in {1..15}; do
 
-              echo "Health check attempt $i/10..."
+              echo "Health check attempt $i/15..."
 
-              if curl -fsS http://localhost:5000 > /dev/null; then
+              if curl -fsS --max-time 3 http://localhost:5000 > /dev/null; then
                 echo "Backend is healthy!"
                 BACKEND_READY=true
                 break
               fi
 
               echo "Backend is not ready yet..."
+
               sleep 2
 
             done
 
             # ----------------------------------------
-            # 9. If backend failed, show logs
+            # 9. Backend failed
             # ----------------------------------------
 
             if [ "$BACKEND_READY" = false ]; then
 
+              echo ""
               echo "========================================"
               echo "BACKEND FAILED TO START"
               echo "========================================"
 
-              echo "PM2 status:"
+              echo ""
+              echo "PM2 STATUS:"
               pm2 status
 
-              echo "Recent backend logs:"
-              pm2 logs truliacare-backend --lines 50 --nostream
+              echo ""
+              echo "PORT 5000 STATUS:"
+              sudo ss -lntp | grep ':5000' || echo "Nothing is listening on port 5000"
+
+              echo ""
+              echo "RECENT BACKEND LOGS:"
+              pm2 logs truliacare-backend --lines 100 --nostream
 
               exit 1
 
@@ -132,6 +143,7 @@ jobs:
             # 10. Verify PM2
             # ----------------------------------------
 
+            echo ""
             echo "Checking PM2..."
 
             pm2 status
@@ -140,34 +152,88 @@ jobs:
             # 11. Verify Nginx
             # ----------------------------------------
 
+            echo ""
             echo "Checking Nginx configuration..."
 
             sudo nginx -t
 
             # ----------------------------------------
-            # 12. Test public HTTPS endpoint
+            # 12. Reload Nginx
             # ----------------------------------------
 
+            echo ""
+            echo "Reloading Nginx..."
+
+            sudo systemctl reload nginx
+
+            # ----------------------------------------
+            # 13. Test public HTTPS endpoint
+            # ----------------------------------------
+
+            echo ""
             echo "Testing public HTTPS endpoint..."
 
-            if curl -fsS https://appathon.pranavshende.online > /dev/null; then
-              echo "Public HTTPS endpoint is healthy!"
-            else
-              echo "WARNING: Public HTTPS health check failed."
-              echo "Backend itself is running, but HTTPS check failed."
+            PUBLIC_READY=false
+
+            for i in {1..10}; do
+
+              echo "HTTPS health check attempt $i/10..."
+
+              if curl -fsS --max-time 5 https://appathon.pranavshende.online > /dev/null; then
+                echo "Public HTTPS endpoint is healthy!"
+                PUBLIC_READY=true
+                break
+              fi
+
+              echo "Public HTTPS endpoint is not ready yet..."
+
+              sleep 2
+
+            done
+
+            # ----------------------------------------
+            # 14. Public endpoint failed
+            # ----------------------------------------
+
+            if [ "$PUBLIC_READY" = false ]; then
+
+              echo ""
+              echo "========================================"
+              echo "PUBLIC HTTPS HEALTH CHECK FAILED"
+              echo "========================================"
+
+              echo ""
+              echo "Nginx status:"
+              sudo systemctl status nginx --no-pager
+
+              echo ""
+              echo "Nginx listening ports:"
+              sudo ss -lntp | grep -E ':80|:443' || true
+
+              echo ""
+              echo "Nginx recent errors:"
+              sudo tail -n 50 /var/log/nginx/error.log
+
               exit 1
+
             fi
 
             # ----------------------------------------
-            # 13. Deployment complete
+            # 15. Final verification
             # ----------------------------------------
 
+            echo ""
             echo "========================================"
             echo "DEPLOYMENT SUCCESSFUL"
             echo "========================================"
 
+            echo ""
             echo "Backend:"
             echo "https://appathon.pranavshende.online"
 
+            echo ""
             echo "PM2:"
             pm2 status
+
+            echo ""
+            echo "Deployment completed successfully!"
