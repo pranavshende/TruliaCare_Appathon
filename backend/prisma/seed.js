@@ -2,211 +2,190 @@ const argon2 = require('argon2');
 const prisma = require('../prismaClient');
 
 async function main() {
-  console.log('🌱 Starting database seed for TruliaCare Maintenance & Escalation System...');
+  console.log('🌱 Starting database seed for TruliaCare Maintenance & Escalation System (Updated Schema)...');
 
-  // 1. Clean existing records in reverse dependency order (optional/safe upsert)
-  console.log('Cleaning existing seed records...');
-  await prisma.notification.deleteMany({});
+  // 1. Clean existing records in reverse dependency order
+  console.log('Cleaning existing records...');
+  await prisma.emailLog.deleteMany({});
   await prisma.escalationLog.deleteMany({});
   await prisma.maintenanceRequest.deleteMany({});
-  await prisma.slaRule.deleteMany({});
-  await prisma.technician.deleteMany({});
-  await prisma.category.deleteMany({});
+  await prisma.user.deleteMany({});
 
-  // 2. Seed Users
-  console.log('Seeding users...');
-  const employeePassword = await argon2.hash('password123');
+  // 2. Hash default passwords
+  const defaultPassword = await argon2.hash('password123');
   const adminPassword = await argon2.hash('admin123');
 
-  const employee = await prisma.user.upsert({
-    where: { email: 'john@company.com' },
-    update: {
-      name: 'John Doe',
-      role: 'employee',
-      department: 'IT',
-      isActive: true,
-    },
-    create: {
+  // 3. Seed Users (Employee, Admin, Technicians)
+  console.log('Seeding users across EMPLOYEE, ADMIN, and TECHNICIAN roles...');
+
+  const employee = await prisma.user.create({
+    data: {
       name: 'John Doe',
       email: 'john@company.com',
-      password: employeePassword,
-      role: 'employee',
-      department: 'IT',
+      password: defaultPassword,
+      role: 'EMPLOYEE',
       isActive: true,
     },
   });
 
-  const admin = await prisma.user.upsert({
-    where: { email: 'fm@company.com' },
-    update: {
-      name: 'Facility Manager',
-      role: 'admin',
-      department: 'Facilities',
+  const employee2 = await prisma.user.create({
+    data: {
+      name: 'Sarah Jenkins',
+      email: 'sarah@company.com',
+      password: defaultPassword,
+      role: 'EMPLOYEE',
       isActive: true,
     },
-    create: {
+  });
+
+  const admin = await prisma.user.create({
+    data: {
       name: 'Facility Manager',
       email: 'fm@company.com',
       password: adminPassword,
-      role: 'admin',
-      department: 'Facilities',
+      role: 'ADMIN',
       isActive: true,
     },
   });
 
-  console.log(`✓ Seeded users: ${employee.email} (employee), ${admin.email} (admin)`);
-
-  // 3. Seed Categories
-  console.log('Seeding categories...');
-  const itCategory = await prisma.category.create({
-    data: { name: 'IT' },
-  });
-
-  const facilitiesCategory = await prisma.category.create({
-    data: { name: 'Facilities' },
-  });
-
-  const infrastructureCategory = await prisma.category.create({
-    data: { name: 'Infrastructure' },
-  });
-
-  console.log('✓ Seeded categories: IT, Facilities, Infrastructure');
-
-  // 4. Seed Technicians
-  console.log('Seeding technicians...');
-  const techIT = await prisma.technician.create({
+  const techIT = await prisma.user.create({
     data: {
-      name: 'Ravi Kumar',
-      categoryId: itCategory.id,
-      isAvailable: true,
+      name: 'Ravi Kumar (IT Specialist)',
+      email: 'ravi.tech@company.com',
+      password: defaultPassword,
+      role: 'TECHNICIAN',
+      isActive: true,
     },
   });
 
-  const techFacilities = await prisma.technician.create({
+  const techFacility = await prisma.user.create({
     data: {
-      name: 'Suresh Patel',
-      categoryId: facilitiesCategory.id,
-      isAvailable: true,
+      name: 'Suresh Patel (Facility Specialist)',
+      email: 'suresh.tech@company.com',
+      password: defaultPassword,
+      role: 'TECHNICIAN',
+      isActive: true,
     },
   });
 
-  const techInfra = await prisma.technician.create({
+  const techElectrical = await prisma.user.create({
     data: {
-      name: 'Amit Sharma',
-      categoryId: infrastructureCategory.id,
-      isAvailable: true,
+      name: 'Amit Sharma (Electrical Specialist)',
+      email: 'amit.tech@company.com',
+      password: defaultPassword,
+      role: 'TECHNICIAN',
+      isActive: true,
     },
   });
 
-  console.log('✓ Seeded technicians: Ravi Kumar (IT), Suresh Patel (Facilities), Amit Sharma (Infrastructure)');
+  console.log(`✓ Seeded users:
+  - Employee: ${employee.email}, ${employee2.email}
+  - Admin: ${admin.email}
+  - Technicians: ${techIT.email}, ${techFacility.email}, ${techElectrical.email}`);
 
-  // 5. Seed SLA Rules
-  console.log('Seeding SLA rules...');
-  await prisma.slaRule.createMany({
-    data: [
-      { categoryId: itCategory.id, priority: 'Critical', thresholdMinutes: 15, escalateToRole: 'admin' },
-      { categoryId: itCategory.id, priority: 'High', thresholdMinutes: 30, escalateToRole: 'admin' },
-      { categoryId: itCategory.id, priority: 'Medium', thresholdMinutes: 120, escalateToRole: 'admin' },
-      { categoryId: itCategory.id, priority: 'Low', thresholdMinutes: 480, escalateToRole: 'admin' },
-      { categoryId: facilitiesCategory.id, priority: 'Critical', thresholdMinutes: 20, escalateToRole: 'admin' },
-      { categoryId: facilitiesCategory.id, priority: 'High', thresholdMinutes: 60, escalateToRole: 'admin' },
-      { categoryId: facilitiesCategory.id, priority: 'Medium', thresholdMinutes: 180, escalateToRole: 'admin' },
-      { categoryId: facilitiesCategory.id, priority: 'Low', thresholdMinutes: 720, escalateToRole: 'admin' },
-      { categoryId: infrastructureCategory.id, priority: 'Critical', thresholdMinutes: 10, escalateToRole: 'admin' },
-      { categoryId: infrastructureCategory.id, priority: 'High', thresholdMinutes: 30, escalateToRole: 'admin' },
-      { categoryId: infrastructureCategory.id, priority: 'Medium', thresholdMinutes: 120, escalateToRole: 'admin' },
-      { categoryId: infrastructureCategory.id, priority: 'Low', thresholdMinutes: 240, escalateToRole: 'admin' },
-    ],
-  });
-
-  console.log('✓ Seeded SLA rules across IT, Facilities, and Infrastructure');
-
-  // 6. Seed Sample Maintenance Requests & Escalation Logs
-  console.log('Seeding sample maintenance requests...');
+  // 4. Seed Maintenance Requests
+  console.log('Seeding maintenance requests...');
   const now = new Date();
 
-  // Request 1: Pending (VPN issue)
+  // Request 1: PENDING (IT - VPN Issue)
   const req1 = await prisma.maintenanceRequest.create({
     data: {
-      userId: employee.id,
-      categoryId: itCategory.id,
-      title: 'VPN connection dropping repeatedly during remote work',
-      description: 'The corporate GlobalProtect VPN disconnects every 10-15 minutes on the 4th floor network.',
-      priority: 'High',
-      status: 'Pending',
-      escalationLevel: 0,
-      slaDueAt: new Date(now.getTime() + 30 * 60 * 1000), // 30 mins from now
+      title: 'VPN connection dropping repeatedly on 4th floor',
+      description: 'Corporate GlobalProtect VPN drops every 10-15 minutes when connecting from the engineering wing.',
+      category: 'IT',
+      priority: 'HIGH',
+      status: 'PENDING',
+      employeeId: employee.id,
     },
   });
 
-  // Request 2: In Progress (AC leaking in Server Room B)
+  // Request 2: IN_PROGRESS (FACILITY - AC leak)
   const req2 = await prisma.maintenanceRequest.create({
     data: {
-      userId: employee.id,
-      categoryId: facilitiesCategory.id,
       title: 'AC unit condensation leaking in Server Room B',
-      description: 'Water droplet condensation visible directly above rack #2 in Server Room B. Urgent attention needed.',
-      priority: 'Critical',
-      status: 'In Progress',
-      assignedTechnicianId: techFacilities.id,
-      escalationLevel: 0,
-      slaDueAt: new Date(now.getTime() + 20 * 60 * 1000),
+      description: 'Water droplet condensation visible above Server Rack #2. Needs urgent drainage inspection.',
+      category: 'FACILITY',
+      priority: 'CRITICAL',
+      status: 'IN_PROGRESS',
+      employeeId: employee.id,
+      technicianId: techFacility.id,
     },
   });
 
-  // Request 3: Escalated (Core Switch overheating)
-  const pastCreated = new Date(now.getTime() - 45 * 60 * 1000); // 45 mins ago
+  // Request 3: ESCALATED (ELECTRICAL - Main Breaker Trip)
+  const pastTime = new Date(now.getTime() - 40 * 60 * 1000); // 40 minutes ago
+  const escalatedTime = new Date(now.getTime() - 10 * 60 * 1000); // 10 minutes ago
   const req3 = await prisma.maintenanceRequest.create({
     data: {
-      userId: employee.id,
-      categoryId: infrastructureCategory.id,
-      title: 'Core Switch 01 overheating and causing packet loss',
-      description: 'Temperature sensor alert triggered on Core Switch 01 (IDF-3). Exhaust fan failure suspected.',
-      priority: 'Critical',
-      status: 'Escalated',
-      assignedTechnicianId: techInfra.id,
-      escalationLevel: 1,
-      slaDueAt: new Date(pastCreated.getTime() + 10 * 60 * 1000), // breached 35 mins ago
-      createdAt: pastCreated,
+      title: 'Main power breaker tripping intermittently in Lab 3',
+      description: 'Lab 3 heavy equipment trips breaker panel 3B under sustained load. Immediate inspection required.',
+      category: 'ELECTRICAL',
+      priority: 'CRITICAL',
+      status: 'ESCALATED',
+      employeeId: employee2.id,
+      technicianId: techElectrical.id,
+      createdAt: pastTime,
+      escalatedAt: escalatedTime,
     },
   });
 
-  // Escalation log for Request 3
+  // Request 4: RESOLVED (PLUMBING - Cafeteria tap)
+  const req4 = await prisma.maintenanceRequest.create({
+    data: {
+      title: 'Cafeteria sink faucet leaking constantly',
+      description: 'Hot water faucet in main cafeteria sink #2 cannot be shut off completely.',
+      category: 'PLUMBING',
+      priority: 'LOW',
+      status: 'RESOLVED',
+      employeeId: employee.id,
+      technicianId: techFacility.id,
+    },
+  });
+
+  console.log('✓ Seeded maintenance requests (PENDING, IN_PROGRESS, ESCALATED, RESOLVED)');
+
+  // 5. Seed Escalation Logs
+  console.log('Seeding escalation logs...');
   await prisma.escalationLog.create({
     data: {
       requestId: req3.id,
-      fromStatus: 'Pending',
-      toStatus: 'Escalated',
-      escalationLevel: 1,
-      escalatedToRole: 'admin',
-      triggerType: 'timer',
-      reason: 'SLA breached: unresolved after 10-minute critical threshold',
-      createdAt: new Date(pastCreated.getTime() + 10 * 60 * 1000),
+      previousStatus: 'PENDING',
+      newStatus: 'ESCALATED',
+      reason: 'Critical SLA breached: Request remained unacknowledged past 30-minute threshold',
+      escalatedTo: admin.id,
+      escalationType: 'AUTOMATIC',
+      createdAt: escalatedTime,
     },
   });
 
-  // Notifications
-  await prisma.notification.create({
+  console.log('✓ Seeded escalation log for Request #3');
+
+  // 6. Seed Email Logs
+  console.log('Seeding email audit logs...');
+  await prisma.emailLog.create({
     data: {
-      userId: admin.id,
       requestId: req3.id,
-      message: `[ESCALATION] Maintenance Request #${req3.id} ("${req3.title}") has been escalated to Level 1 due to SLA breach.`,
-      type: 'in_app',
-      isRead: false,
+      recipient: admin.email,
+      subject: `[URGENT ESCALATION] Maintenance Request: ${req3.title}`,
+      notificationType: 'REQUEST_ESCALATED',
+      status: 'SENT',
+      messageId: '<msg-esc-10293847@truliacare.internal>',
+      createdAt: escalatedTime,
     },
   });
 
-  await prisma.notification.create({
+  await prisma.emailLog.create({
     data: {
-      userId: employee.id,
       requestId: req2.id,
-      message: `Your request #${req2.id} has been assigned to technician Suresh Patel and is now In Progress.`,
-      type: 'in_app',
-      isRead: false,
+      recipient: employee.email,
+      subject: `[UPDATE] Technician assigned to your request: ${req2.title}`,
+      notificationType: 'TECHNICIAN_ASSIGNED',
+      status: 'SENT',
+      messageId: '<msg-assign-9847192@truliacare.internal>',
     },
   });
 
-  console.log('✓ Seeded sample requests, escalation logs, and notifications');
+  console.log('✓ Seeded email logs');
   console.log('\n🎉 Seed completed successfully!');
 }
 

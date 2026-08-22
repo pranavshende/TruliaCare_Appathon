@@ -7,88 +7,12 @@ CREATE TABLE "User" (
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "name" TEXT,
-    "role" TEXT NOT NULL DEFAULT 'employee',
-    "department" TEXT,
+    "role" TEXT NOT NULL DEFAULT 'EMPLOYEE',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "Category" (
-    "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
-
-    CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "Technician" (
-    "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
-    "categoryId" INTEGER NOT NULL,
-    "isAvailable" BOOLEAN NOT NULL DEFAULT true,
-
-    CONSTRAINT "Technician_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "MaintenanceRequest" (
-    "id" SERIAL NOT NULL,
-    "userId" TEXT NOT NULL,
-    "categoryId" INTEGER,
-    "title" TEXT NOT NULL,
-    "description" TEXT NOT NULL,
-    "priority" TEXT NOT NULL DEFAULT 'Medium',
-    "status" TEXT NOT NULL DEFAULT 'Pending',
-    "assignedTechnicianId" INTEGER,
-    "escalationLevel" INTEGER NOT NULL DEFAULT 0,
-    "slaDueAt" TIMESTAMP(3),
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "MaintenanceRequest_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "EscalationLog" (
-    "id" SERIAL NOT NULL,
-    "requestId" INTEGER NOT NULL,
-    "fromStatus" TEXT NOT NULL,
-    "toStatus" TEXT NOT NULL,
-    "escalationLevel" INTEGER NOT NULL,
-    "escalatedToRole" TEXT,
-    "triggerType" TEXT NOT NULL,
-    "reason" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "EscalationLog_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "Notification" (
-    "id" SERIAL NOT NULL,
-    "userId" TEXT NOT NULL,
-    "requestId" INTEGER,
-    "message" TEXT NOT NULL,
-    "type" TEXT NOT NULL DEFAULT 'in_app',
-    "isRead" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "SlaRule" (
-    "id" SERIAL NOT NULL,
-    "categoryId" INTEGER NOT NULL,
-    "priority" TEXT NOT NULL,
-    "thresholdMinutes" INTEGER NOT NULL,
-    "escalateToRole" TEXT NOT NULL DEFAULT 'admin',
-
-    CONSTRAINT "SlaRule_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -101,56 +25,87 @@ CREATE TABLE "Session" (
     CONSTRAINT "Session_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "MaintenanceRequest" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "category" TEXT NOT NULL,
+    "priority" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "employeeId" TEXT NOT NULL,
+    "technicianId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "escalatedAt" TIMESTAMP(3),
+
+    CONSTRAINT "MaintenanceRequest_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "EscalationLog" (
+    "id" TEXT NOT NULL,
+    "requestId" TEXT NOT NULL,
+    "previousStatus" TEXT NOT NULL,
+    "newStatus" TEXT NOT NULL,
+    "reason" TEXT,
+    "escalatedTo" TEXT,
+    "escalationType" TEXT NOT NULL DEFAULT 'AUTOMATIC',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "EscalationLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "EmailLog" (
+    "id" TEXT NOT NULL,
+    "requestId" TEXT NOT NULL,
+    "recipient" TEXT NOT NULL,
+    "subject" TEXT NOT NULL,
+    "notificationType" TEXT NOT NULL DEFAULT 'REQUEST_ESCALATED',
+    "status" TEXT NOT NULL,
+    "messageId" TEXT,
+    "error" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "EmailLog_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Category_name_key" ON "Category"("name");
+CREATE UNIQUE INDEX "Session_sid_key" ON "Session"("sid");
 
 -- CreateIndex
 CREATE INDEX "MaintenanceRequest_status_idx" ON "MaintenanceRequest"("status");
 
 -- CreateIndex
-CREATE INDEX "MaintenanceRequest_userId_idx" ON "MaintenanceRequest"("userId");
+CREATE INDEX "MaintenanceRequest_employeeId_idx" ON "MaintenanceRequest"("employeeId");
 
 -- CreateIndex
-CREATE INDEX "MaintenanceRequest_categoryId_status_idx" ON "MaintenanceRequest"("categoryId", "status");
+CREATE INDEX "MaintenanceRequest_technicianId_idx" ON "MaintenanceRequest"("technicianId");
+
+-- CreateIndex
+CREATE INDEX "MaintenanceRequest_category_idx" ON "MaintenanceRequest"("category");
 
 -- CreateIndex
 CREATE INDEX "EscalationLog_requestId_idx" ON "EscalationLog"("requestId");
 
 -- CreateIndex
-CREATE INDEX "Notification_userId_idx" ON "Notification"("userId");
+CREATE INDEX "EmailLog_requestId_idx" ON "EmailLog"("requestId");
 
 -- CreateIndex
-CREATE INDEX "Notification_isRead_idx" ON "Notification"("isRead");
-
--- CreateIndex
-CREATE INDEX "SlaRule_categoryId_priority_idx" ON "SlaRule"("categoryId", "priority");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Session_sid_key" ON "Session"("sid");
+CREATE INDEX "EmailLog_status_idx" ON "EmailLog"("status");
 
 -- AddForeignKey
-ALTER TABLE "Technician" ADD CONSTRAINT "Technician_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "MaintenanceRequest" ADD CONSTRAINT "MaintenanceRequest_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "MaintenanceRequest" ADD CONSTRAINT "MaintenanceRequest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "MaintenanceRequest" ADD CONSTRAINT "MaintenanceRequest_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "MaintenanceRequest" ADD CONSTRAINT "MaintenanceRequest_assignedTechnicianId_fkey" FOREIGN KEY ("assignedTechnicianId") REFERENCES "Technician"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "MaintenanceRequest" ADD CONSTRAINT "MaintenanceRequest_technicianId_fkey" FOREIGN KEY ("technicianId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "EscalationLog" ADD CONSTRAINT "EscalationLog_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "MaintenanceRequest"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Notification" ADD CONSTRAINT "Notification_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "MaintenanceRequest"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "SlaRule" ADD CONSTRAINT "SlaRule_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "EmailLog" ADD CONSTRAINT "EmailLog_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "MaintenanceRequest"("id") ON DELETE CASCADE ON UPDATE CASCADE;

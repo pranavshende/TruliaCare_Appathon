@@ -7,99 +7,17 @@ datasource db {
 }
 
 model User {
-  id                  String               @id @default(cuid())
-  email               String               @unique
-  password            String
-  name                String?
-  role                String               @default("employee") // "employee" or "admin"
-  department          String?
-  isActive            Boolean              @default(true)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  maintenanceRequests MaintenanceRequest[]
-  notifications       Notification[]
-}
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      String   @default("EMPLOYEE") // EMPLOYEE, ADMIN, TECHNICIAN
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-model Category {
-  id                  Int                  @id @default(autoincrement())
-  name                String               @unique // e.g. "IT", "Facilities", "Infrastructure"
-  maintenanceRequests MaintenanceRequest[]
-  technicians         Technician[]
-  slaRules            SlaRule[]
-}
-
-model Technician {
-  id               Int                  @id @default(autoincrement())
-  name             String
-  categoryId       Int
-  category         Category             @relation(fields: [categoryId], references: [id])
-  isAvailable      Boolean              @default(true)
-  assignedRequests MaintenanceRequest[]
-}
-
-model MaintenanceRequest {
-  id                   Int             @id @default(autoincrement())
-  userId               String
-  user                 User            @relation(fields: [userId], references: [id])
-  categoryId           Int?
-  category             Category?       @relation(fields: [categoryId], references: [id])
-  title                String
-  description          String
-  priority             String          @default("Medium") // "Low", "Medium", "High", "Critical"
-  status               String          @default("Pending") // "Pending", "In Progress", "Escalated", "Resolved"
-  assignedTechnicianId Int?
-  assignedTechnician   Technician?     @relation(fields: [assignedTechnicianId], references: [id])
-  escalationLevel      Int             @default(0)
-  slaDueAt             DateTime?
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
-  escalationLogs       EscalationLog[]
-  notifications        Notification[]
-
-  @@index([status])
-  @@index([userId])
-  @@index([categoryId, status])
-}
-
-model EscalationLog {
-  id                Int                @id @default(autoincrement())
-  requestId         Int
-  request           MaintenanceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  fromStatus        String
-  toStatus          String
-  escalationLevel   Int
-  escalatedToRole   String?
-  triggerType       String             // "timer" or "manual"
-  reason            String?
-  createdAt         DateTime           @default(now())
-
-  @@index([requestId])
-}
-
-model Notification {
-  id         Int                 @id @default(autoincrement())
-  userId     String
-  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  requestId  Int?
-  request    MaintenanceRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
-  message    String
-  type       String              @default("in_app") // "email", "push", "in_app"
-  isRead     Boolean             @default(false)
-  createdAt  DateTime            @default(now())
-
-  @@index([userId])
-  @@index([isRead])
-}
-
-model SlaRule {
-  id               Int      @id @default(autoincrement())
-  categoryId       Int
-  category         Category @relation(fields: [categoryId], references: [id])
-  priority         String   // "Low", "Medium", "High", "Critical"
-  thresholdMinutes Int
-  escalateToRole   String   @default("admin")
-
-  @@index([categoryId, priority])
+  requestsCreated  MaintenanceRequest[] @relation("EmployeeRequests")
+  requestsAssigned MaintenanceRequest[] @relation("AssignedRequests")
 }
 
 model Session {
@@ -107,4 +25,61 @@ model Session {
   sid       String   @unique
   data      String
   expiresAt DateTime
+}
+
+model MaintenanceRequest {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  category    String   // IT, FACILITY, ELECTRICAL, PLUMBING, HVAC, OTHER
+  priority    String   // LOW, MEDIUM, HIGH, CRITICAL
+  status      String   @default("PENDING") // PENDING, IN_PROGRESS, ESCALATED, RESOLVED
+
+  employeeId  String
+  employee    User     @relation("EmployeeRequests", fields: [employeeId], references: [id])
+
+  technicianId String?
+  technician   User?    @relation("AssignedRequests", fields: [technicianId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  escalatedAt DateTime?
+
+  escalationLogs EscalationLog[]
+  emailLogs      EmailLog[]
+
+  @@index([status])
+  @@index([employeeId])
+  @@index([technicianId])
+  @@index([category])
+}
+
+model EscalationLog {
+  id             String             @id @default(cuid())
+  requestId      String
+  request        MaintenanceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  previousStatus String
+  newStatus      String
+  reason         String?
+  escalatedTo    String?            // SYSTEM or Admin ID
+  escalationType String             @default("AUTOMATIC") // AUTOMATIC, MANUAL
+  createdAt      DateTime           @default(now())
+
+  @@index([requestId])
+}
+
+model EmailLog {
+  id               String             @id @default(cuid())
+  requestId        String
+  request          MaintenanceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  recipient        String
+  subject          String
+  notificationType String             @default("REQUEST_ESCALATED")
+  status           String             // SENT, FAILED
+  messageId        String?
+  error            String?
+  createdAt        DateTime           @default(now())
+
+  @@index([requestId])
+  @@index([status])
 }
