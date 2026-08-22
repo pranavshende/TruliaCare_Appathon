@@ -15,9 +15,51 @@ router.get('/dashboard', async (req, res) => {
     const escalated = await prisma.maintenanceRequest.count({ where: { status: 'ESCALATED' } });
     const resolved = await prisma.maintenanceRequest.count({ where: { status: 'RESOLVED' } });
 
+    // 1. Total Cost
+    const costAgg = await prisma.maintenanceRequest.aggregate({
+      _sum: { cost: true }
+    });
+    const totalCost = costAgg._sum.cost || 0;
+
+    // 2. Unreported Issues (Location Feedback)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const negativeFeedback = await prisma.locationFeedback.findMany({
+      where: { rating: { lte: 2 }, createdAt: { gte: sevenDaysAgo } }
+    });
+    const negativeCounts = {};
+    negativeFeedback.forEach(f => {
+      if (f.location) {
+        negativeCounts[f.location] = (negativeCounts[f.location] || 0) + 1;
+      }
+    });
+    const unreportedIssues = Object.entries(negativeCounts)
+      .filter(([loc, count]) => count >= 3)
+      .map(([loc, count]) => ({ location: loc, count }));
+
+    // 3. Chronic Issues (Recurring Tickets in last 30 days)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const recentTickets = await prisma.maintenanceRequest.findMany({
+      where: { createdAt: { gte: thirtyDaysAgo } }
+    });
+    const ticketCounts = {};
+    recentTickets.forEach(t => {
+      if (t.location && t.category) {
+        const key = `${t.location}::${t.category}`;
+        ticketCounts[key] = (ticketCounts[key] || 0) + 1;
+      }
+    });
+    const chronicIssues = Object.entries(ticketCounts)
+      .filter(([key, count]) => count >= 3)
+      .map(([key, count]) => {
+        const [location, category] = key.split('::');
+        return { location, category, count };
+      });
+
     res.json({
       success: true,
-      stats: { total, pending, inProgress, escalated, resolved }
+      stats: { total, pending, inProgress, escalated, resolved, totalCost },
+      unreportedIssues,
+      chronicIssues
     });
   } catch (error) {
     console.error('Admin dashboard stats error:', error);
@@ -84,8 +126,11 @@ router.patch('/requests/:id/assign', async (req, res) => {
     });
 
     // Send email to assigned technician
-    const { sendNewRequestEmail } = require('../services/emailService');
+    const { sendNewRequestEmail, sendStatusUpdateEmail } = require('../services/emailService');
     sendNewRequestEmail(request, request.technician, false).catch(err => console.error("Email failed:", err));
+
+    // Send status update to employee
+    sendStatusUpdateEmail(request, request.employeeId, 'IN_PROGRESS (Technician Assigned)').catch(err => console.error("Email failed:", err));
 
     res.json({ success: true, request, message: 'Technician assigned successfully' });
   } catch (error) {
@@ -106,6 +151,9 @@ router.patch('/requests/:id/status', async (req, res) => {
       where: { id: req.params.id },
       data: { status },
     });
+
+    const { sendStatusUpdateEmail } = require('../services/emailService');
+    sendStatusUpdateEmail(request, request.employeeId, status).catch(err => console.error("Email failed:", err));
 
     res.json({ success: true, request, message: 'Status updated successfully' });
   } catch (error) {
@@ -161,7 +209,7 @@ router.get('/technicians', async (req, res) => {
   try {
     const technicians = await prisma.user.findMany({
       where: { role: 'TECHNICIAN' },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, skills: true },
     });
 
     res.json({ success: true, technicians });

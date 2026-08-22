@@ -81,9 +81,24 @@ export default function RequestTimelineModal({ requestId, visible, onClose }: { 
                 {request.status === 'RESOLVED' && (
                   <View style={styles.timelineItem}>
                     <View style={[styles.dot, { backgroundColor: '#10b981' }]} />
-                    <View style={styles.timelineCard}>
-                      <Text style={styles.timelineHeader}>Request Resolved</Text>
-                      <Text style={styles.timelineTime}>{new Date(request.updatedAt).toLocaleString()}</Text>
+                    <View style={styles.logCard}>
+                      <View style={styles.logHeader}>
+                        <Text style={styles.logStatus}>RESOLVED</Text>
+                        <Text style={styles.logTime}>{new Date(request.resolvedAt || request.updatedAt).toLocaleString()}</Text>
+                      </View>
+                      {request.workPerformed ? (
+                        <View style={{ marginTop: 8 }}>
+                          <Text style={{ fontWeight: 'bold', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>RESOLUTION SUMMARY</Text>
+                          <Text style={{ fontSize: 14, color: '#374151', backgroundColor: '#f3f4f6', padding: 8, borderRadius: 4 }}>
+                            {request.workPerformed}
+                          </Text>
+                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+                            {request.resourcesUsed ? <Text style={styles.metricText}><Text style={styles.metricLabel}>Resources:</Text> {request.resourcesUsed}</Text> : null}
+                            {request.cost !== null ? <Text style={styles.metricText}><Text style={styles.metricLabel}>Cost:</Text> ${request.cost}</Text> : null}
+                            {request.timeSpentHours !== null ? <Text style={styles.metricText}><Text style={styles.metricLabel}>Time:</Text> {request.timeSpentHours}h</Text> : null}
+                          </View>
+                        </View>
+                      ) : null}
                     </View>
                   </View>
                 )}
@@ -119,5 +134,11 @@ const styles = StyleSheet.create({
   timelineReason: { fontSize: 12, color: '#6b7280' },
   imageContainer: { marginTop: 12 },
   imageLabel: { fontSize: 14, fontWeight: 'bold', color: '#374151', marginBottom: 4 },
-  attachedImage: { width: '100%', height: 200, borderRadius: 8, resizeMode: 'cover', marginTop: 8 }
+  attachedImage: { width: '100%', height: 200, borderRadius: 8, resizeMode: 'cover', marginTop: 8 },
+  logCard: { flex: 1, backgroundColor: '#f9fafb', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', marginLeft: 10 },
+  logHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  logStatus: { fontWeight: 'bold', color: '#111827' },
+  logTime: { fontSize: 12, color: '#6b7280' },
+  metricLabel: { fontWeight: 'bold', color: '#6b7280' },
+  metricText: { fontSize: 12, color: '#374151' }
 });

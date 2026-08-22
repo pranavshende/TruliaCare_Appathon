@@ -15,6 +15,8 @@ export default function EmployeeDashboard() {
   const [filter, setFilter] = useState('ALL');
   const [viewingRequestId, setViewingRequestId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'AVAILABLE' | 'ASSIGNED'>('AVAILABLE');
+  const [resolvingTicketId, setResolvingTicketId] = useState<string | null>(null);
+  const [resolveForm, setResolveForm] = useState({ workPerformed: '', resourcesUsed: '', cost: '', timeSpentHours: '' });
 
   const fetchRequests = async () => {
     try {
@@ -33,10 +35,20 @@ export default function EmployeeDashboard() {
     }
   };
 
-  const handleResolve = async (id: string) => {
+  const submitResolve = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resolvingTicketId) return;
     try {
-      const res = await apiFetch(`/requests/${id}/resolve`, { method: 'PATCH' });
-      if (res.ok) fetchRequests();
+      const res = await apiFetch(`/requests/${resolvingTicketId}/resolve`, { 
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resolveForm)
+      });
+      if (res.ok) {
+        setResolvingTicketId(null);
+        setResolveForm({ workPerformed: '', resourcesUsed: '', cost: '', timeSpentHours: '' });
+        fetchRequests();
+      }
     } catch (err) {
       console.error(err);
     }
@@ -326,7 +338,7 @@ export default function EmployeeDashboard() {
                       )}
                       {user?.role === 'TECHNICIAN' && activeTab === 'ASSIGNED' && r.status === 'IN_PROGRESS' && (
                         <button 
-                          onClick={() => handleResolve(r.id)}
+                          onClick={() => setResolvingTicketId(r.id)}
                           className="text-emerald-600 hover:text-emerald-800 transition-colors ml-4"
                         >
                           Resolve
@@ -340,6 +352,42 @@ export default function EmployeeDashboard() {
           </table>
         </div>
       </div>
+
+      {/* Resolution Modal */}
+      {resolvingTicketId && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="bg-emerald-500 p-4 flex justify-between items-center">
+              <h3 className="text-white font-bold">Resolve Ticket</h3>
+              <button onClick={() => setResolvingTicketId(null)} className="text-emerald-100 hover:text-white">✕</button>
+            </div>
+            <form onSubmit={submitResolve} className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Work Performed</label>
+                <textarea required value={resolveForm.workPerformed} onChange={e => setResolveForm({ ...resolveForm, workPerformed: e.target.value })} className="w-full border-slate-200 rounded-lg p-2 bg-slate-50" rows={2}></textarea>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Resources / Parts Used</label>
+                <input type="text" value={resolveForm.resourcesUsed} onChange={e => setResolveForm({ ...resolveForm, resourcesUsed: e.target.value })} className="w-full border-slate-200 rounded-lg p-2 bg-slate-50" placeholder="e.g. 2x Cables, 1x Switch" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Cost ($)</label>
+                  <input type="number" step="0.01" value={resolveForm.cost} onChange={e => setResolveForm({ ...resolveForm, cost: e.target.value })} className="w-full border-slate-200 rounded-lg p-2 bg-slate-50" placeholder="0.00" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Time (Hours)</label>
+                  <input type="number" step="0.5" value={resolveForm.timeSpentHours} onChange={e => setResolveForm({ ...resolveForm, timeSpentHours: e.target.value })} className="w-full border-slate-200 rounded-lg p-2 bg-slate-50" placeholder="1.5" />
+                </div>
+              </div>
+              <div className="pt-4 flex space-x-3">
+                <button type="button" onClick={() => setResolvingTicketId(null)} className="flex-1 px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl">Cancel</button>
+                <button type="submit" className="flex-1 px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700">Submit Resolution</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

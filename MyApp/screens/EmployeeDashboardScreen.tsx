@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ScrollView, Image, Modal, TextInput } from 'react-native';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, API_BASE_URL } from '../services/api';
 import SlaTimer from '../components/SlaTimer';
 import RequestTimelineModal from '../components/RequestTimelineModal';
+import FeedbackModal from '../components/FeedbackModal';
 
 export default function EmployeeDashboardScreen() {
   const { user, logout } = useAuth();
@@ -13,7 +14,16 @@ export default function EmployeeDashboardScreen() {
   const [assignedTickets, setAssignedTickets] = useState<any[]>([]); // Tech
   const [filter, setFilter] = useState('ALL');
   const [viewingRequestId, setViewingRequestId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'AVAILABLE' | 'ASSIGNED'>('AVAILABLE');
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  
+  // Resolution State
+  const [resolvingTicketId, setResolvingTicketId] = useState<string | null>(null);
+  const [workPerformed, setWorkPerformed] = useState('');
+  const [resourcesUsed, setResourcesUsed] = useState('');
+  const [cost, setCost] = useState('');
+  const [timeSpentHours, setTimeSpentHours] = useState('');
 
   const fetchRequests = async () => {
     try {
@@ -32,12 +42,26 @@ export default function EmployeeDashboardScreen() {
     }
   };
 
-  const handleResolve = async (id: string) => {
+  const submitResolve = async () => {
+    if (!resolvingTicketId || !workPerformed) return Alert.alert('Error', 'Work Performed is required');
     try {
-      const res = await apiFetch(`/requests/${id}/resolve`, { method: 'PATCH' });
-      if (res.ok) fetchRequests();
+      const res = await apiFetch(`/requests/${resolvingTicketId}/resolve`, { 
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workPerformed, resourcesUsed, cost, timeSpentHours })
+      });
+      if (res.ok) {
+        setResolvingTicketId(null);
+        setWorkPerformed('');
+        setResourcesUsed('');
+        setCost('');
+        setTimeSpentHours('');
+        fetchRequests();
+        Alert.alert('Success', 'Ticket resolved');
+      }
     } catch (err) {
       console.error(err);
+      Alert.alert('Error', 'Failed to resolve ticket');
     }
   };
 
@@ -58,7 +82,6 @@ export default function EmployeeDashboardScreen() {
   useEffect(() => {
     fetchRequests();
 
-    // Socket.io for Real-time updates
     const socketUrl = API_BASE_URL.replace('/api', '');
     const socket: Socket = io(socketUrl);
     
@@ -78,10 +101,18 @@ export default function EmployeeDashboardScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerText}>Hi, {user?.name}</Text>
-        <TouchableOpacity onPress={logout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        <View>
+          <Text style={styles.headerTitle}>Hi, {user?.name}</Text>
+          <Text style={styles.headerSubtitle}>Manage and track maintenance tickets.</Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => setShowFeedbackModal(true)}>
+            <Text style={styles.headerBtnText}>🚩 Report/Rate</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout} style={styles.logoutButton}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       
       {user?.role === 'EMPLOYEE' && (
@@ -125,13 +156,43 @@ export default function EmployeeDashboardScreen() {
         </ScrollView>
       </View>
 
-      <Text style={styles.sectionTitle}>{user?.role === 'TECHNICIAN' ? (activeTab === 'AVAILABLE' ? 'Available Tickets' : 'My Tickets') : 'My Requests'}</Text>
-      
       <RequestTimelineModal 
         visible={!!viewingRequestId} 
         requestId={viewingRequestId || ''} 
         onClose={() => setViewingRequestId(null)} 
       />
+      
+      <FeedbackModal visible={showFeedbackModal} onClose={() => setShowFeedbackModal(false)} />
+
+      <Modal visible={!!resolvingTicketId} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Resolve Ticket</Text>
+            <Text style={styles.label}>Work Performed</Text>
+            <TextInput style={styles.input} value={workPerformed} onChangeText={setWorkPerformed} multiline />
+            <Text style={styles.label}>Resources Used</Text>
+            <TextInput style={styles.input} value={resourcesUsed} onChangeText={setResourcesUsed} />
+            <View style={styles.rowGrid}>
+              <View style={styles.col}>
+                <Text style={styles.label}>Cost</Text>
+                <TextInput style={styles.input} value={cost} onChangeText={setCost} keyboardType="numeric" />
+              </View>
+              <View style={styles.col}>
+                <Text style={styles.label}>Hours</Text>
+                <TextInput style={styles.input} value={timeSpentHours} onChangeText={setTimeSpentHours} keyboardType="numeric" />
+              </View>
+            </View>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.btn, styles.btnCancel]} onPress={() => setResolvingTicketId(null)}>
+                <Text style={styles.btnCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.btn, styles.btnSubmit]} onPress={submitResolve}>
+                <Text style={styles.btnSubmitText}>Submit</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <FlatList
         data={filter === 'ALL' ? activeRequests : activeRequests.filter(r => r.status === filter)}
@@ -158,7 +219,7 @@ export default function EmployeeDashboardScreen() {
                 </TouchableOpacity>
               )}
               {user?.role === 'TECHNICIAN' && activeTab === 'ASSIGNED' && item.status === 'IN_PROGRESS' && (
-                <TouchableOpacity onPress={() => handleResolve(item.id)} style={styles.resolveButton}>
+                <TouchableOpacity style={styles.resolveButton} onPress={() => setResolvingTicketId(item.id)}>
                   <Text style={styles.resolveButtonText}>Mark Resolved</Text>
                 </TouchableOpacity>
               )}
@@ -172,8 +233,11 @@ export default function EmployeeDashboardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f3f4f6', padding: 16, paddingTop: 40 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  headerText: { fontSize: 20, fontWeight: 'bold' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold' },
+  headerSubtitle: { fontSize: 14, color: '#6b7280', marginTop: 2 },
+  headerBtn: { backgroundColor: '#e2e8f0', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  headerBtnText: { fontSize: 12, fontWeight: 'bold', color: '#334155' },
   logoutButton: { padding: 8, backgroundColor: '#ef4444', borderRadius: 4 },
   logoutText: { color: '#fff' },
   statsContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
@@ -189,7 +253,6 @@ const styles = StyleSheet.create({
   filterBtnActive: { backgroundColor: '#2563eb' },
   filterBtnText: { color: '#4b5563', fontSize: 12, fontWeight: 'bold' },
   filterBtnTextActive: { color: '#ffffff' },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
   requestCard: { backgroundColor: '#fff', padding: 16, borderRadius: 8, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between' },
   requestTitle: { fontSize: 16, fontWeight: 'bold' },
   requestStatus: { marginTop: 4, color: '#4b5563', fontWeight: 'bold' },
@@ -201,5 +264,18 @@ const styles = StyleSheet.create({
   acceptButton: { marginTop: 10, backgroundColor: '#f59e0b', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 4, alignItems: 'center' },
   acceptButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
   resolveButton: { marginTop: 10, backgroundColor: '#10b981', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 4, alignItems: 'center' },
-  resolveButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 12 }
+  resolveButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
+  modalCard: { backgroundColor: '#fff', borderRadius: 16, padding: 20 },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827', marginBottom: 16 },
+  label: { fontSize: 12, fontWeight: 'bold', color: '#64748b', marginBottom: 4 },
+  input: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, padding: 10, marginBottom: 12 },
+  rowGrid: { flexDirection: 'row', gap: 12 },
+  col: { flex: 1 },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 10 },
+  btn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
+  btnCancel: { backgroundColor: '#f1f5f9' },
+  btnCancelText: { color: '#64748b', fontWeight: 'bold' },
+  btnSubmit: { backgroundColor: '#10b981' },
+  btnSubmitText: { color: '#fff', fontWeight: 'bold' }
 });

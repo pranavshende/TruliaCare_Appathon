@@ -5,7 +5,25 @@ import { useAuth } from '../context/AuthContext';
 export default function RequestTimelineModal({ requestId, onClose }: { requestId: string, onClose: () => void }) {
   const { user } = useAuth();
   const [request, setRequest] = useState<any>(null);
+  const [technicians, setTechnicians] = useState<any[]>([]);
+  const [assigningTechId, setAssigningTechId] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const handleAssign = async () => {
+    if (!assigningTechId) return;
+    try {
+      const res = await apiFetch(`/admin/requests/${requestId}/assign`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ technicianId: assigningTechId })
+      });
+      if (res.ok) {
+        onClose();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -15,6 +33,14 @@ export default function RequestTimelineModal({ requestId, onClose }: { requestId
         const data = await res.json();
         if (data.success) {
           setRequest(data.request);
+        }
+        
+        if (user?.role === 'ADMIN') {
+          const techRes = await apiFetch('/admin/technicians');
+          const techData = await techRes.json();
+          if (techData.success) {
+            setTechnicians(techData.technicians || []);
+          }
         }
       } catch (err) {
         console.error(err);
@@ -56,6 +82,36 @@ export default function RequestTimelineModal({ requestId, onClose }: { requestId
               <div className="mt-4">
                 <p className="text-sm font-bold text-gray-700 mb-2">Attached Photo:</p>
                 <img src={request.imageUrl} alt="Issue" className="max-w-full h-auto rounded-lg shadow-sm max-h-64 object-contain" />
+              </div>
+            )}
+
+            {user?.role === 'ADMIN' && request.status === 'PENDING' && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h4 className="font-bold text-sm text-gray-700 mb-2">Assign Technician</h4>
+                <div className="flex gap-2">
+                  <select 
+                    value={assigningTechId} 
+                    onChange={e => setAssigningTechId(e.target.value)}
+                    className="border border-gray-300 rounded p-2 text-sm flex-1"
+                  >
+                    <option value="">Select Technician...</option>
+                    {technicians.map(t => {
+                      const isMatch = t.skills?.includes(request.category);
+                      return (
+                        <option key={t.id} value={t.id}>
+                          {t.name} {isMatch ? '★ (Skill Match)' : ''}
+                        </option>
+                      )
+                    })}
+                  </select>
+                  <button 
+                    onClick={handleAssign}
+                    disabled={!assigningTechId}
+                    className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold disabled:opacity-50"
+                  >
+                    Assign
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -103,8 +159,22 @@ export default function RequestTimelineModal({ requestId, onClose }: { requestId
                 <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white p-4 rounded border border-slate-200 shadow">
                   <div className="flex items-center justify-between space-x-2 mb-1">
                     <div className="font-bold text-slate-900">Request Resolved</div>
-                    <time className="text-xs font-medium text-indigo-500">{new Date(request.updatedAt).toLocaleString()}</time>
+                    <time className="text-xs font-medium text-indigo-500">{new Date(request.resolvedAt || request.updatedAt).toLocaleString()}</time>
                   </div>
+                  
+                  {/* Resolution Details */}
+                  {request.workPerformed && (
+                    <div className="mt-3 text-sm">
+                      <div className="text-gray-500 font-bold text-xs uppercase mb-1">Resolution Summary</div>
+                      <div className="bg-gray-50 p-2 rounded text-gray-700 mb-2">{request.workPerformed}</div>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {request.resourcesUsed && <div><span className="font-bold text-gray-500">Resources:</span> {request.resourcesUsed}</div>}
+                        {request.cost !== null && <div><span className="font-bold text-gray-500">Cost:</span> ${request.cost}</div>}
+                        {request.timeSpentHours !== null && <div><span className="font-bold text-gray-500">Time Spent:</span> {request.timeSpentHours}h</div>}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

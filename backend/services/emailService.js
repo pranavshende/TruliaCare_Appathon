@@ -16,7 +16,6 @@ const transporter = nodemailer.createTransport({
 /**
  * Sends an escalation email and logs the attempt to the database.
  * @param {Object} request - The maintenance request object
- * @param {String} adminEmail - The recipient admin's email
  */
 const sendEscalationEmail = async (request) => {
   // Fetch actual admin users from DB
@@ -45,7 +44,7 @@ const sendEscalationEmail = async (request) => {
     await prisma.emailLog.create({
       data: {
         requestId: request.id,
-        recipient: process.env.SMTP_EMAIL || 'admin@truliacare.com',
+        recipient: adminEmail,
         subject: mailOptions.subject,
         notificationType: 'REQUEST_ESCALATED',
         status: 'SENT',
@@ -57,7 +56,7 @@ const sendEscalationEmail = async (request) => {
     await prisma.emailLog.create({
       data: {
         requestId: request.id,
-        recipient: process.env.SMTP_EMAIL || 'admin@truliacare.com',
+        recipient: adminEmail,
         subject: 'Escalation Alert',
         notificationType: 'REQUEST_ESCALATED',
         status: 'FAILED',
@@ -100,7 +99,69 @@ const sendNewRequestEmail = async (request, technician, isAccepted = false) => {
   }
 };
 
+const sendTicketCreatedEmail = async (request, employeeId) => {
+  try {
+    const employee = await prisma.user.findUnique({ where: { id: employeeId } });
+    if (!employee || !employee.email) return;
+
+    const mailOptions = {
+      from: `"${process.env.SMTP_NAME || 'TruliaCare'}" <${process.env.SMTP_EMAIL}>`,
+      to: employee.email,
+      subject: `Ticket Created: #${request.id.slice(-4)}`,
+      text: `Hello ${employee.name},\n\nYour maintenance request has been successfully created and is currently pending assignment.\n\nTitle: ${request.title}\nCategory: ${request.category}\nPriority: ${request.priority}\n\nWe will notify you when its status updates.`
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Creation email sent to Employee (${employee.email}) | MessageID: ${info.messageId}`);
+
+    await prisma.emailLog.create({
+      data: {
+        requestId: request.id,
+        recipient: employee.email,
+        subject: mailOptions.subject,
+        notificationType: 'REQUEST_CREATED',
+        status: 'SENT',
+        messageId: info.messageId
+      }
+    });
+  } catch (error) {
+    console.error('Error sending creation email:', error);
+  }
+};
+
+const sendStatusUpdateEmail = async (request, employeeId, status) => {
+  try {
+    const employee = await prisma.user.findUnique({ where: { id: employeeId } });
+    if (!employee || !employee.email) return;
+
+    const mailOptions = {
+      from: `"${process.env.SMTP_NAME || 'TruliaCare'}" <${process.env.SMTP_EMAIL}>`,
+      to: employee.email,
+      subject: `Ticket Update: #${request.id.slice(-4)}`,
+      text: `Hello ${employee.name},\n\nYour maintenance request "${request.title}" has been updated.\n\nNew Status: ${status}\n\nPlease check the dashboard for more details.`
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Status update email sent to Employee (${employee.email}) | MessageID: ${info.messageId}`);
+
+    await prisma.emailLog.create({
+      data: {
+        requestId: request.id,
+        recipient: employee.email,
+        subject: mailOptions.subject,
+        notificationType: 'REQUEST_STATUS_UPDATED',
+        status: 'SENT',
+        messageId: info.messageId
+      }
+    });
+  } catch (error) {
+    console.error('Error sending status update email:', error);
+  }
+};
+
 module.exports = {
   sendEscalationEmail,
-  sendNewRequestEmail
+  sendNewRequestEmail,
+  sendTicketCreatedEmail,
+  sendStatusUpdateEmail
 };

@@ -9,13 +9,20 @@ export default function AdminDashboard() {
   const [filter, setFilter] = useState('ALL');
   const [viewingRequestId, setViewingRequestId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'TICKETS' | 'USERS'>('TICKETS');
+  const [dashboardData, setDashboardData] = useState<any>({ stats: {}, unreportedIssues: [], chronicIssues: [] });
 
   const fetchData = async () => {
     try {
       if (activeTab === 'TICKETS') {
-        const res = await apiFetch('/admin/requests');
-        const data = await res.json();
-        if (data.success) setRequests(data.requests || []);
+        const [reqRes, dashRes] = await Promise.all([
+          apiFetch('/admin/requests'),
+          apiFetch('/admin/dashboard')
+        ]);
+        const reqData = await reqRes.json();
+        const dashData = await dashRes.json();
+        
+        if (reqData.success) setRequests(reqData.requests || []);
+        if (dashData.success) setDashboardData(dashData);
       } else {
         const res = await apiFetch('/admin/users');
         const data = await res.json();
@@ -30,13 +37,9 @@ export default function AdminDashboard() {
     fetchData();
   }, [activeTab]);
 
-  const stats = {
-    total: requests.length,
-    pending: requests.filter(r => r.status === 'PENDING').length,
-    inProgress: requests.filter(r => r.status === 'IN_PROGRESS').length,
-    escalated: requests.filter(r => r.status === 'ESCALATED').length,
-    resolved: requests.filter(r => r.status === 'RESOLVED').length,
-  };
+  const stats = dashboardData.stats || { total: 0, pending: 0, inProgress: 0, escalated: 0, resolved: 0, totalCost: 0 };
+  const unreportedIssues = dashboardData.unreportedIssues || [];
+  const chronicIssues = dashboardData.chronicIssues || [];
 
   const filteredRequests = filter === 'ALL' ? requests : requests.filter(r => r.status === filter);
 
@@ -81,8 +84,36 @@ export default function AdminDashboard() {
 
       {activeTab === 'TICKETS' ? (
         <>
+          {/* Alerts */}
+          {(unreportedIssues.length > 0 || chronicIssues.length > 0) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {unreportedIssues.map((issue: any, i: number) => (
+                <div key={`u-${i}`} className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
+                  <div className="flex">
+                    <div className="flex-shrink-0"><span className="text-red-500 text-xl">⚠️</span></div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-bold text-red-800">Possible unreported issue — satisfaction is dropping.</h3>
+                      <p className="text-sm text-red-700 mt-1">{issue.location} has received {issue.count} negative ratings recently without an active ticket.</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {chronicIssues.map((issue: any, i: number) => (
+                <div key={`c-${i}`} className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg shadow-sm">
+                  <div className="flex">
+                    <div className="flex-shrink-0"><span className="text-amber-500 text-xl">🔁</span></div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-bold text-amber-800">Chronic Issue Detected</h3>
+                      <p className="text-sm text-amber-700 mt-1">{issue.location} {issue.category} — {issue.count} tickets in 30 days. Consider a permanent fix.</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-slate-100 border-b-4 border-blue-500">
               <div className="flex items-center space-x-3 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center">
@@ -141,6 +172,16 @@ export default function AdminDashboard() {
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Resolved</p>
               </div>
               <p className="text-4xl font-extrabold text-slate-900">{stats.resolved}</p>
+            </div>
+
+            <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-slate-100 border-b-4 border-purple-500">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-500 flex items-center justify-center">
+                  <span className="font-bold text-lg">$</span>
+                </div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Costs</p>
+              </div>
+              <p className="text-3xl font-extrabold text-slate-900">${stats.totalCost?.toFixed(0) || 0}</p>
             </div>
           </div>
 

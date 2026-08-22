@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import EmployeeDashboard from './EmployeeDashboard';
 import AdminDashboard from './AdminDashboard';
+import FeedbackWidget from './FeedbackWidget';
 import { useState } from 'react';
 
 export default function Dashboard() {
@@ -153,6 +154,8 @@ export default function Dashboard() {
           {user?.role === 'ADMIN' ? <AdminDashboard /> : <EmployeeDashboard />}
         </div>
       </main>
+
+      <FeedbackWidget />
     </div>
   );
 }

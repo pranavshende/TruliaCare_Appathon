@@ -10,6 +10,7 @@ export default function CreateRequestScreen({ navigation }: any) {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('IT');
   const [priority, setPriority] = useState('LOW');
+  const [location, setLocation] = useState('');
   const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -75,6 +76,7 @@ export default function CreateRequestScreen({ navigation }: any) {
       formData.append('description', description);
       formData.append('category', category);
       formData.append('priority', priority);
+      if (location) formData.append('location', location);
 
       if (photo) {
         const fileExt = photo.uri.substring(photo.uri.lastIndexOf('.') + 1);
@@ -139,6 +141,9 @@ export default function CreateRequestScreen({ navigation }: any) {
           <Picker.Item label="Critical" value="CRITICAL" />
         </Picker>
       </View>
+
+      <Text style={styles.label}>Location (Optional)</Text>
+      <TextInput style={styles.input} value={location} onChangeText={setLocation} placeholder="e.g. 3rd Floor Washroom" />
 
       <Text style={styles.label}>Photo (Optional)</Text>
       <TouchableOpacity style={styles.imagePickerBtn} onPress={pickImage}>

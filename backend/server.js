@@ -5,6 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const passport = require('passport');
 const prisma = require('./prismaClient');
+const supabase = require('./services/supabase');
 require('dotenv').config();
 
 const app = express();
@@ -57,11 +58,13 @@ io.on('connection', (socket) => {
 const authRoutes = require('./routes/authRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const feedbackRoutes = require('./routes/feedbackRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/requests', employeeRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/feedback', feedbackRoutes);
 app.use('/api/admin/analytics', analyticsRoutes);
 
 // Basic health check route
@@ -76,4 +79,23 @@ server.listen(PORT, () => {
     // Start Escalation Background Job
     const { startEscalationJob } = require('./escalationJob');
     startEscalationJob();
+
+    // Ensure photos bucket exists and is public
+    (async () => {
+      try {
+        const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+        if (!listError) {
+          const bucketExists = buckets.find(b => b.name === 'photos');
+          if (!bucketExists) {
+            await supabase.storage.createBucket('photos', { public: true });
+            console.log('Created public "photos" bucket in Supabase');
+          } else {
+            // Update to public just in case
+            await supabase.storage.updateBucket('photos', { public: true });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to initialize Supabase buckets:', err);
+      }
+    })();
 });

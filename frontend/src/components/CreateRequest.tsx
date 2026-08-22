@@ -6,6 +6,7 @@ export default function CreateRequest({ onSuccess }: { onSuccess: () => void }) 
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('IT');
   const [priority, setPriority] = useState('LOW');
+  const [location, setLocation] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,6 +22,7 @@ export default function CreateRequest({ onSuccess }: { onSuccess: () => void }) 
       formData.append('description', description);
       formData.append('category', category);
       formData.append('priority', priority);
+      if (location) formData.append('location', location);
       if (photo) {
         formData.append('photo', photo);
       }
@@ -76,6 +78,10 @@ export default function CreateRequest({ onSuccess }: { onSuccess: () => void }) 
               <option value="CRITICAL">Critical</option>
             </select>
           </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Location (e.g. 3rd Floor Washroom)</label>
+          <input type="text" value={location} onChange={e => setLocation(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="Optional" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Issue Photo</label>

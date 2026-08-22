@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const prisma = require('../prismaClient');
 const supabase = require('../services/supabase');
 const { requireRole } = require('../middleware/authMiddleware');
-const { sendNewRequestEmail } = require('../services/emailService');
+const { sendNewRequestEmail, sendTicketCreatedEmail, sendStatusUpdateEmail } = require('../services/emailService');
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -15,7 +15,7 @@ router.use(requireRole(['EMPLOYEE', 'ADMIN', 'TECHNICIAN']));
 
 // Create a maintenance request
 router.post('/', upload.single('photo'), async (req, res) => {
-  const { title, description, category, priority } = req.body;
+  const { title, description, category, priority, location } = req.body;
   if (!title || !description || !category || !priority) {
     return res.status(400).json({ success: false, message: 'Missing required fields' });
   }
@@ -24,7 +24,10 @@ router.post('/', upload.single('photo'), async (req, res) => {
     let imageUrl = null;
 
     if (req.file) {
-      const fileName = `${uuidv4()}-${req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '')}`;
+      const originalName = req.file.originalname || 'photo.jpg';
+      const sanitizedName = originalName.replace(/[^a-zA-Z0-9.-]/g, '') || 'image.jpg';
+      const fileName = `${uuidv4()}-${sanitizedName}`;
+      
       const { data, error } = await supabase.storage
         .from('photos')
         .upload(fileName, req.file.buffer, {
@@ -34,6 +37,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
 
       if (error) {
         console.error('Supabase upload error:', error);
+        return res.status(500).json({ success: false, message: 'Failed to upload image' });
       } else {
         const { data: publicUrlData } = supabase.storage
           .from('photos')
@@ -48,6 +52,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
         description,
         category,
         priority,
+        location,
         imageUrl,
         status: 'PENDING',
         employeeId: req.user.id,
@@ -58,6 +63,8 @@ router.post('/', upload.single('photo'), async (req, res) => {
     if (req.io) {
       req.io.emit('ticket_created', request);
     }
+
+    sendTicketCreatedEmail(request, req.user.id).catch(err => console.error("Email failed:", err));
 
     res.status(201).json({ success: true, request });
   } catch (error) {
@@ -140,12 +147,23 @@ router.patch('/:id/resolve', async (req, res) => {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
+    const { workPerformed, resourcesUsed, cost, timeSpentHours } = req.body;
+
     const request = await prisma.maintenanceRequest.update({
       where: { id: req.params.id },
-      data: { status: 'RESOLVED', resolvedAt: new Date() },
+      data: { 
+        status: 'RESOLVED', 
+        resolvedAt: new Date(),
+        workPerformed,
+        resourcesUsed,
+        cost: cost ? parseFloat(cost) : null,
+        timeSpentHours: timeSpentHours ? parseFloat(timeSpentHours) : null
+      },
     });
 
     if (req.io) req.io.emit('ticket_resolved', request);
+
+    sendStatusUpdateEmail(request, request.employeeId, 'RESOLVED').catch(err => console.error("Email failed:", err));
 
     res.json({ success: true, request });
   } catch (error) {
@@ -180,6 +198,9 @@ router.patch('/:id/accept', async (req, res) => {
 
     // Send confirmation email to technician
     sendNewRequestEmail(request, request.technician, true).catch(err => console.error("Email failed:", err));
+    
+    // Send status update to employee
+    sendStatusUpdateEmail(request, request.employeeId, 'IN_PROGRESS (Accepted by Technician)').catch(err => console.error("Email failed:", err));
 
     res.json({ success: true, request });
   } catch (error) {
