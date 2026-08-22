@@ -40,7 +40,7 @@ const sendEscalationEmail = async (request) => {
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log('Escalation email sent:', info.messageId);
+    console.log(`Escalation email sent to Admin (${adminEmail}) | MessageID: ${info.messageId}`);
 
     await prisma.emailLog.create({
       data: {
@@ -83,7 +83,7 @@ const sendNewRequestEmail = async (request, technician, isAccepted = false) => {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('New request email sent to Tech:', info.messageId);
+    console.log(`New request email sent to Tech (${technician.email}) | MessageID: ${info.messageId}`);
 
     await prisma.emailLog.create({
       data: {
