@@ -6,7 +6,7 @@ import CreateRequest from './CreateRequest';
 import SlaTimer from './SlaTimer';
 import RequestTimelineModal from './RequestTimelineModal';
 
-export default function EmployeeDashboard() {
+export default function EmployeeDashboard({ activeNav }: { activeNav?: string }) {
   const { user } = useAuth();
   const [requests, setRequests] = useState<any[]>([]); // For employees
   const [availableTickets, setAvailableTickets] = useState<any[]>([]); // For technicians
@@ -135,7 +135,7 @@ export default function EmployeeDashboard() {
       {viewingRequestId && <RequestTimelineModal requestId={viewingRequestId} onClose={() => setViewingRequestId(null)} />}
 
       {/* Summary Cards */}
-      {user?.role === 'EMPLOYEE' && (
+      {(activeNav === 'Overview' || !activeNav) && user?.role === 'EMPLOYEE' && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-slate-100 border-b-4 border-blue-500">
             <div className="flex items-center space-x-3 mb-2">
@@ -200,11 +200,11 @@ export default function EmployeeDashboard() {
       )}
 
       {/* SVG Chart Section */}
-      {user?.role === 'EMPLOYEE' && (
+      {(activeNav === 'Overview' || !activeNav) && user?.role === 'EMPLOYEE' && (
         <div className="bg-white rounded-3xl p-6 shadow-sm ring-1 ring-slate-100">
           <h3 className="text-lg font-extrabold text-slate-900 mb-6">Ticket Volume (Last 7 Days)</h3>
           <div className="relative h-48 w-full">
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible pointer-events-none">
               <defs>
                 <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#2563eb" stopOpacity="0.2" />
@@ -259,7 +259,8 @@ export default function EmployeeDashboard() {
       )}
 
       {/* Tickets List */}
-      <div className="bg-white rounded-3xl shadow-sm ring-1 ring-slate-100 overflow-hidden">
+      {(activeNav === 'Tickets' || user?.role === 'TECHNICIAN' || !activeNav) && (
+        <div className="bg-white rounded-3xl shadow-sm ring-1 ring-slate-100 overflow-hidden">
         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <h3 className="text-lg font-extrabold text-slate-900">
             {user?.role === 'EMPLOYEE' ? 'My Requests' : (activeTab === 'AVAILABLE' ? 'Available Tickets' : 'My Tickets')}
@@ -352,6 +353,7 @@ export default function EmployeeDashboard() {
           </table>
         </div>
       </div>
+      )}
 
       {/* Resolution Modal */}
       {resolvingTicketId && (

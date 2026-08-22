@@ -18,10 +18,7 @@ const transporter = nodemailer.createTransport({
  * @param {Object} request - The maintenance request object
  */
 const sendEscalationEmail = async (request) => {
-  // Fetch actual admin users from DB
-  const admins = await prisma.user.findMany({ where: { role: 'ADMIN' } });
-  if (admins.length === 0) return;
-  const adminEmail = admins[0].email; // Send to the first admin
+  const adminEmail = 'mayankgotmare0915@gmail.com'; // User requested specific admin email
 
   const mailOptions = {
     from: `"${process.env.SMTP_NAME || 'Smart Maintenance System'}" <${process.env.SMTP_EMAIL}>`,
@@ -74,20 +71,22 @@ const sendNewRequestEmail = async (request, technician, isAccepted = false) => {
       ? `You have successfully accepted a maintenance request.`
       : `A new maintenance request has been assigned to you. Please log in to the dashboard to accept/resolve this ticket.`;
 
+    const techEmail = 'hannaturkey15@gmail.com'; // User requested specific technician email
+
     const mailOptions = {
       from: `"${process.env.SMTP_NAME || 'TruliaCare'}" <${process.env.SMTP_EMAIL}>`,
-      to: technician.email,
+      to: techEmail,
       subject: isAccepted ? `Ticket Accepted: #${request.id.slice(-4)}` : `New Ticket Assigned: #${request.id.slice(-4)}`,
       text: `Hello ${technician.name},\n\n${actionText}\n\nTitle: ${request.title}\nCategory: ${request.category}\nPriority: ${request.priority}`
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log(`New request email sent to Tech (${technician.email}) | MessageID: ${info.messageId}`);
+    console.log(`New request email sent to Tech (${techEmail}) | MessageID: ${info.messageId}`);
 
     await prisma.emailLog.create({
       data: {
         requestId: request.id,
-        recipient: technician.email,
+        recipient: techEmail,
         subject: mailOptions.subject,
         notificationType: 'REQUEST_ASSIGNED',
         status: 'SENT',
@@ -104,20 +103,22 @@ const sendTicketCreatedEmail = async (request, employeeId) => {
     const employee = await prisma.user.findUnique({ where: { id: employeeId } });
     if (!employee || !employee.email) return;
 
+    const empEmail = 'pranavshende97@gmail.com'; // User requested specific employee email
+
     const mailOptions = {
       from: `"${process.env.SMTP_NAME || 'TruliaCare'}" <${process.env.SMTP_EMAIL}>`,
-      to: employee.email,
+      to: empEmail,
       subject: `Ticket Created: #${request.id.slice(-4)}`,
       text: `Hello ${employee.name},\n\nYour maintenance request has been successfully created and is currently pending assignment.\n\nTitle: ${request.title}\nCategory: ${request.category}\nPriority: ${request.priority}\n\nWe will notify you when its status updates.`
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log(`Creation email sent to Employee (${employee.email}) | MessageID: ${info.messageId}`);
+    console.log(`Creation email sent to Employee (${empEmail}) | MessageID: ${info.messageId}`);
 
     await prisma.emailLog.create({
       data: {
         requestId: request.id,
-        recipient: employee.email,
+        recipient: empEmail,
         subject: mailOptions.subject,
         notificationType: 'REQUEST_CREATED',
         status: 'SENT',
@@ -134,20 +135,22 @@ const sendStatusUpdateEmail = async (request, employeeId, status) => {
     const employee = await prisma.user.findUnique({ where: { id: employeeId } });
     if (!employee || !employee.email) return;
 
+    const empEmail = 'pranavshende97@gmail.com'; // User requested specific employee email
+
     const mailOptions = {
       from: `"${process.env.SMTP_NAME || 'TruliaCare'}" <${process.env.SMTP_EMAIL}>`,
-      to: employee.email,
+      to: empEmail,
       subject: `Ticket Update: #${request.id.slice(-4)}`,
       text: `Hello ${employee.name},\n\nYour maintenance request "${request.title}" has been updated.\n\nNew Status: ${status}\n\nPlease check the dashboard for more details.`
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log(`Status update email sent to Employee (${employee.email}) | MessageID: ${info.messageId}`);
+    console.log(`Status update email sent to Employee (${empEmail}) | MessageID: ${info.messageId}`);
 
     await prisma.emailLog.create({
       data: {
         requestId: request.id,
-        recipient: employee.email,
+        recipient: empEmail,
         subject: mailOptions.subject,
         notificationType: 'REQUEST_STATUS_UPDATED',
         status: 'SENT',

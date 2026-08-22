@@ -118,7 +118,7 @@ export default function Dashboard() {
               </div>
               <h4 className="text-white text-sm font-bold mb-1">Need help?</h4>
               <p className="text-slate-400 text-xs mb-3">Contact support or view our documentation.</p>
-              <button className="w-full py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg transition-colors">
+              <button onClick={() => alert('Support portal opening...')} className="w-full py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg transition-colors">
                 Contact Support
               </button>
             </div>
@@ -151,7 +151,7 @@ export default function Dashboard() {
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-full flex flex-col">
-          {user?.role === 'ADMIN' ? <AdminDashboard /> : <EmployeeDashboard />}
+          {user?.role === 'ADMIN' ? <AdminDashboard activeNav={activeNav} /> : <EmployeeDashboard activeNav={activeNav} />}
         </div>
       </main>
 

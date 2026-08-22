@@ -3,7 +3,7 @@ import { apiFetch } from '../services/api';
 import SlaTimer from './SlaTimer';
 import RequestTimelineModal from './RequestTimelineModal';
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ activeNav }: { activeNav?: string }) {
   const [requests, setRequests] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [filter, setFilter] = useState('ALL');
@@ -58,31 +58,33 @@ export default function AdminDashboard() {
 
       {viewingRequestId && <RequestTimelineModal requestId={viewingRequestId} onClose={() => setViewingRequestId(null)} />}
 
-      {/* Tabs */}
-      <div className="flex space-x-2 bg-slate-200/50 p-1 rounded-xl w-full max-w-sm">
-        <button
-          onClick={() => setActiveTab('TICKETS')}
-          className={`flex-1 text-sm font-extrabold py-2 rounded-lg transition-all ${
-            activeTab === 'TICKETS'
-              ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200'
-              : 'text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          All Tickets
-        </button>
-        <button
-          onClick={() => setActiveTab('USERS')}
-          className={`flex-1 text-sm font-extrabold py-2 rounded-lg transition-all ${
-            activeTab === 'USERS'
-              ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200'
-              : 'text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          User Management
-        </button>
-      </div>
+      {/* Internal Tabs mapping to Sidebar if undefined */}
+      {(!activeNav) && (
+        <div className="flex space-x-2 bg-slate-200/50 p-1 rounded-xl w-full max-w-sm">
+          <button
+            onClick={() => setActiveTab('TICKETS')}
+            className={`flex-1 text-sm font-extrabold py-2 rounded-lg transition-all ${
+              activeTab === 'TICKETS'
+                ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            All Tickets
+          </button>
+          <button
+            onClick={() => setActiveTab('USERS')}
+            className={`flex-1 text-sm font-extrabold py-2 rounded-lg transition-all ${
+              activeTab === 'USERS'
+                ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            User Management
+          </button>
+        </div>
+      )}
 
-      {activeTab === 'TICKETS' ? (
+      {(activeNav === 'Overview' || activeNav === 'Tickets' || activeTab === 'TICKETS' && !activeNav) ? (
         <>
           {/* Alerts */}
           {(unreportedIssues.length > 0 || chronicIssues.length > 0) && (
@@ -113,7 +115,8 @@ export default function AdminDashboard() {
           )}
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+          {(activeNav === 'Overview' || !activeNav) && (
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-slate-100 border-b-4 border-blue-500">
               <div className="flex items-center space-x-3 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center">
@@ -184,12 +187,14 @@ export default function AdminDashboard() {
               <p className="text-3xl font-extrabold text-slate-900">${stats.totalCost?.toFixed(0) || 0}</p>
             </div>
           </div>
+          )}
 
           {/* SVG Chart Section */}
+          {(activeNav === 'Overview' || !activeNav) && (
           <div className="bg-white rounded-3xl p-6 shadow-sm ring-1 ring-slate-100">
             <h3 className="text-lg font-extrabold text-slate-900 mb-6">System Volume (Last 7 Days)</h3>
             <div className="relative h-48 w-full">
-              <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible pointer-events-none">
                 <defs>
                   <linearGradient id="areaGradientAdmin" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#2563eb" stopOpacity="0.2" />
@@ -216,8 +221,10 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+          )}
 
           {/* Tickets List */}
+          {(activeNav === 'Tickets' || !activeNav) && (
           <div className="bg-white rounded-3xl shadow-sm ring-1 ring-slate-100 overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h3 className="text-lg font-extrabold text-slate-900">All System Tickets</h3>
@@ -296,8 +303,9 @@ export default function AdminDashboard() {
               </table>
             </div>
           </div>
+          )}
         </>
-      ) : (
+      ) : (activeNav === 'Users' || activeTab === 'USERS' && !activeNav) ? (
         /* Users List */
         <div className="bg-white rounded-3xl shadow-sm ring-1 ring-slate-100 overflow-hidden">
           <div className="p-5 border-b border-slate-100 bg-slate-50/50">
@@ -349,7 +357,7 @@ export default function AdminDashboard() {
             </table>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
