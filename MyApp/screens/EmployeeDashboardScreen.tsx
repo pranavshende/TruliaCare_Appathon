@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ScrollView, Image, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ScrollView, Image, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, API_BASE_URL } from '../services/api';
@@ -26,6 +26,7 @@ export default function EmployeeDashboardScreen() {
   const [timeSpentHours, setTimeSpentHours] = useState('');
 
   const fetchRequests = async () => {
+    setRefreshing(true);
     try {
       const res = await apiFetch('/requests/my');
       const data = await res.json();
@@ -39,6 +40,8 @@ export default function EmployeeDashboardScreen() {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -197,6 +200,15 @@ export default function EmployeeDashboardScreen() {
       <FlatList
         data={filter === 'ALL' ? activeRequests : activeRequests.filter(r => r.status === filter)}
         keyExtractor={item => item.id}
+        refreshing={refreshing}
+        onRefresh={fetchRequests}
+        ListEmptyComponent={
+          refreshing ? null : (
+            <Text style={{ textAlign: 'center', marginTop: 20, color: '#6b7280' }}>
+              No tickets found.
+            </Text>
+          )
+        }
         renderItem={({ item }) => (
           <View style={styles.requestCard}>
             <View style={{ flex: 1 }}>

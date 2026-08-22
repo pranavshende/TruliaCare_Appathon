@@ -74,7 +74,7 @@ const sendNewRequestEmail = async (request, technician, isAccepted = false) => {
     const techEmail = 'hannaturkey15@gmail.com'; // User requested specific technician email
 
     const mailOptions = {
-      from: `"${process.env.SMTP_NAME || 'TruliaCare'}" <${process.env.SMTP_EMAIL}>`,
+      from: `"${process.env.SMTP_NAME || 'resolveX'}" <${process.env.SMTP_EMAIL}>`,
       to: techEmail,
       subject: isAccepted ? `Ticket Accepted: #${request.id.slice(-4)}` : `New Ticket Assigned: #${request.id.slice(-4)}`,
       text: `Hello ${technician.name},\n\n${actionText}\n\nTitle: ${request.title}\nCategory: ${request.category}\nPriority: ${request.priority}`
@@ -106,7 +106,7 @@ const sendTicketCreatedEmail = async (request, employeeId) => {
     const empEmail = 'pranavshende97@gmail.com'; // User requested specific employee email
 
     const mailOptions = {
-      from: `"${process.env.SMTP_NAME || 'TruliaCare'}" <${process.env.SMTP_EMAIL}>`,
+      from: `"${process.env.SMTP_NAME || 'resolveX'}" <${process.env.SMTP_EMAIL}>`,
       to: empEmail,
       subject: `Ticket Created: #${request.id.slice(-4)}`,
       text: `Hello ${employee.name},\n\nYour maintenance request has been successfully created and is currently pending assignment.\n\nTitle: ${request.title}\nCategory: ${request.category}\nPriority: ${request.priority}\n\nWe will notify you when its status updates.`
@@ -138,7 +138,7 @@ const sendStatusUpdateEmail = async (request, employeeId, status) => {
     const empEmail = 'pranavshende97@gmail.com'; // User requested specific employee email
 
     const mailOptions = {
-      from: `"${process.env.SMTP_NAME || 'TruliaCare'}" <${process.env.SMTP_EMAIL}>`,
+      from: `"${process.env.SMTP_NAME || 'resolveX'}" <${process.env.SMTP_EMAIL}>`,
       to: empEmail,
       subject: `Ticket Update: #${request.id.slice(-4)}`,
       text: `Hello ${employee.name},\n\nYour maintenance request "${request.title}" has been updated.\n\nNew Status: ${status}\n\nPlease check the dashboard for more details.`

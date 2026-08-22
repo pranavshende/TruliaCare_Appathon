@@ -62,8 +62,8 @@ export default function Login() {
             </svg>
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight">
-            <span className="text-slate-900">Trulía</span>
-            <span className="text-blue-600">Care</span>
+            <span className="text-slate-900">resolve</span>
+            <span className="text-blue-600">X</span>
           </h1>
         </div>
         <h2 className="mt-2 text-center text-xl tracking-tight text-slate-500 font-medium">
@@ -169,7 +169,7 @@ export default function Login() {
                 <div className="w-full border-t border-slate-200" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-slate-500 font-medium">New to TrulíaCare?</span>
+                <span className="px-2 bg-white text-slate-500 font-medium">New to resolveX?</span>
               </div>
             </div>
 

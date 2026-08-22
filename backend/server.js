@@ -69,7 +69,7 @@ app.use('/api/admin/analytics', analyticsRoutes);
 
 // Basic health check route
 app.get('/', (req, res) => {
-    res.json({ message: 'Welcome to TruliaCare API' });
+    res.json({ message: 'Welcome to resolveX API' });
 });
 
 // Start the server

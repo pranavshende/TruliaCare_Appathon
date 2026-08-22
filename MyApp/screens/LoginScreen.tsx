@@ -53,7 +53,7 @@ export default function LoginScreen({ navigation }: any) {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
         <View style={styles.header}>
-          <Text style={styles.title}>Trulía<Text style={{color: '#2563eb'}}>Care</Text></Text>
+          <Text style={styles.title}>resolve<Text style={{color: '#2563eb'}}>X</Text></Text>
           <Text style={styles.subtitle}>Sign in to your account</Text>
         </View>
 

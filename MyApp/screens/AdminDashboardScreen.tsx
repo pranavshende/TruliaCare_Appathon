@@ -13,8 +13,10 @@ export default function AdminDashboardScreen() {
   const [filter, setFilter] = useState('ALL');
   const [viewingRequestId, setViewingRequestId] = useState<string | null>(null);
   const [reassigningRequestId, setReassigningRequestId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchData = async () => {
+    setRefreshing(true);
     try {
       const [statsRes, reqsRes] = await Promise.all([
         apiFetch('/admin/dashboard'),
@@ -26,6 +28,8 @@ export default function AdminDashboardScreen() {
       if (reqsData.success) setRequests(reqsData.requests);
     } catch (err) {
       console.error(err);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -91,6 +95,15 @@ export default function AdminDashboardScreen() {
       <FlatList
         data={filter === 'ALL' ? requests : requests.filter(r => r.status === filter)}
         keyExtractor={item => item.id}
+        refreshing={refreshing}
+        onRefresh={fetchData}
+        ListEmptyComponent={
+          refreshing ? null : (
+            <Text style={{ textAlign: 'center', marginTop: 20, color: '#6b7280' }}>
+              No tickets found.
+            </Text>
+          )
+        }
         renderItem={({ item }) => (
           <View style={styles.requestCard}>
             <View style={{ flex: 1 }}>

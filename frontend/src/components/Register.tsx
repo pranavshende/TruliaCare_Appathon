@@ -72,8 +72,8 @@ export default function Register() {
             </svg>
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight">
-            <span className="text-slate-900">Trulía</span>
-            <span className="text-blue-600">Care</span>
+            <span className="text-slate-900">resolve</span>
+            <span className="text-blue-600">X</span>
           </h1>
         </div>
         <h2 className="mt-2 text-center text-xl tracking-tight text-slate-500 font-medium">

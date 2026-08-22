@@ -53,7 +53,7 @@ export default function RegisterScreen({ navigation }: any) {
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
           <View style={styles.header}>
-            <Text style={styles.title}>Trulía<Text style={{color: '#2563eb'}}>Care</Text></Text>
+            <Text style={styles.title}>resolve<Text style={{color: '#2563eb'}}>X</Text></Text>
             <Text style={styles.subtitle}>Create your account</Text>
           </View>
 

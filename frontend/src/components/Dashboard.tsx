@@ -28,8 +28,8 @@ export default function Dashboard() {
               </svg>
             </div>
             <h1 className="text-2xl font-extrabold tracking-tight">
-              <span className="text-white">Trulía</span>
-              <span className="text-blue-500">Care</span>
+              <span className="text-white">resolve</span>
+              <span className="text-blue-500">X</span>
             </h1>
           </div>
 
