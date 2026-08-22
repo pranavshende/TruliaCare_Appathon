@@ -102,15 +102,18 @@ router.get('/:id', async (req, res) => {
   try {
     const isTechnician = req.user.role === 'TECHNICIAN';
     
-    // We don't filter by employeeId/technicianId if they are ADMIN, but since this route is mainly
-    // used by employee/technician, let's filter appropriately to ensure they only see their own stuff.
-    // Actually, EmployeeDashboard is used by both. Let's just find by ID, and if it belongs to them.
+    let whereClause = { id: req.params.id };
+    if (req.user.role === 'EMPLOYEE') {
+      whereClause.employeeId = req.user.id;
+    } else if (req.user.role === 'TECHNICIAN') {
+      whereClause.OR = [
+        { technicianId: req.user.id },
+        { technicianId: null, status: 'PENDING' }
+      ];
+    }
+
     const request = await prisma.maintenanceRequest.findFirst({
-      where: {
-        id: req.params.id,
-        ...(req.user.role === 'EMPLOYEE' ? { employeeId: req.user.id } : {}),
-        ...(req.user.role === 'TECHNICIAN' ? { technicianId: req.user.id } : {})
-      },
+      where: whereClause,
       include: {
         technician: {
           select: { id: true, name: true, email: true },
@@ -174,6 +177,9 @@ router.patch('/:id/accept', async (req, res) => {
     });
 
     if (req.io) req.io.emit('ticket_accepted', request);
+
+    // Send confirmation email to technician
+    sendNewRequestEmail(request, request.technician, true).catch(err => console.error("Email failed:", err));
 
     res.json({ success: true, request });
   } catch (error) {

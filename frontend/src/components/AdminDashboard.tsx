@@ -5,33 +5,22 @@ import RequestTimelineModal from './RequestTimelineModal';
 
 export default function AdminDashboard() {
   const [requests, setRequests] = useState<any[]>([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, escalated: 0, resolved: 0 });
-  const [analytics, setAnalytics] = useState<any>(null);
-  const [technicians, setTechnicians] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [filter, setFilter] = useState('ALL');
   const [viewingRequestId, setViewingRequestId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'USERS'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'TICKETS' | 'USERS'>('TICKETS');
 
   const fetchData = async () => {
     try {
-      const [statsRes, reqsRes, techRes, analyticsRes, usersRes] = await Promise.all([
-        apiFetch('/admin/dashboard'),
-        apiFetch(`/admin/requests?status=${filter}`),
-        apiFetch('/admin/technicians'),
-        apiFetch('/admin/analytics'),
-        apiFetch('/admin/users')
-      ]);
-
-      const [statsData, reqsData, techData, analyticsData, usersData] = await Promise.all([
-        statsRes.json(), reqsRes.json(), techRes.json(), analyticsRes.json(), usersRes.json()
-      ]);
-
-      if (statsData.success) setStats(statsData.stats);
-      if (reqsData.success) setRequests(reqsData.requests);
-      if (techData.success) setTechnicians(techData.technicians);
-      if (analyticsData.success) setAnalytics(analyticsData.analytics);
-      if (usersData.success) setUsers(usersData.users);
+      if (activeTab === 'TICKETS') {
+        const res = await apiFetch('/admin/requests');
+        const data = await res.json();
+        if (data.success) setRequests(data.requests || []);
+      } else {
+        const res = await apiFetch('/admin/users');
+        const data = await res.json();
+        if (data.success) setUsers(data.users || []);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -39,185 +28,285 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, [filter]);
+  }, [activeTab]);
 
-  const handleAssign = async (reqId: string, techId: string) => {
-    await apiFetch(`/admin/requests/${reqId}/assign`, {
-      method: 'PATCH',
-      body: JSON.stringify({ technicianId: techId })
-    });
-    fetchData();
+  const stats = {
+    total: requests.length,
+    pending: requests.filter(r => r.status === 'PENDING').length,
+    inProgress: requests.filter(r => r.status === 'IN_PROGRESS').length,
+    escalated: requests.filter(r => r.status === 'ESCALATED').length,
+    resolved: requests.filter(r => r.status === 'RESOLVED').length,
   };
 
-  const handleStatusUpdate = async (reqId: string, status: string) => {
-    await apiFetch(`/admin/requests/${reqId}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status })
-    });
-    fetchData();
-  };
+  const filteredRequests = filter === 'ALL' ? requests : requests.filter(r => r.status === filter);
 
-  const handleEscalate = async (reqId: string) => {
-    await apiFetch(`/admin/requests/${reqId}/escalate`, {
-      method: 'POST',
-      body: JSON.stringify({ reason: 'Manually escalated by Admin' })
-    });
-    fetchData();
-  };
+  // Mock SVG Chart Data (Admin Overview Trendline)
+  const chartPoints = "0,90 20,50 40,85 60,40 80,65 100,20";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-fade-in-up">
+      {/* Header */}
+      <div>
+        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Admin Overview</h2>
+        <p className="text-slate-500 text-sm mt-1">
+          Monitor system-wide tickets, SLA breaches, and manage personnel.
+        </p>
+      </div>
+
+      {viewingRequestId && <RequestTimelineModal requestId={viewingRequestId} onClose={() => setViewingRequestId(null)} />}
+
       {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('DASHBOARD')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'DASHBOARD' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-          >
-            Overview & Requests
-          </button>
-          <button
-            onClick={() => setActiveTab('USERS')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'USERS' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-          >
-            All Users
-          </button>
-        </nav>
+      <div className="flex space-x-2 bg-slate-200/50 p-1 rounded-xl w-full max-w-sm">
+        <button
+          onClick={() => setActiveTab('TICKETS')}
+          className={`flex-1 text-sm font-extrabold py-2 rounded-lg transition-all ${
+            activeTab === 'TICKETS'
+              ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200'
+              : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          All Tickets
+        </button>
+        <button
+          onClick={() => setActiveTab('USERS')}
+          className={`flex-1 text-sm font-extrabold py-2 rounded-lg transition-all ${
+            activeTab === 'USERS'
+              ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200'
+              : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          User Management
+        </button>
       </div>
 
-      {activeTab === 'DASHBOARD' && (
+      {activeTab === 'TICKETS' ? (
         <>
-          <div className="grid grid-cols-5 gap-4">
-        <div className="bg-white shadow p-4 rounded-lg text-center"><p className="text-sm text-gray-500">Total Requests</p><p className="text-2xl font-bold">{stats.total}</p></div>
-        <div className="bg-white shadow p-4 rounded-lg text-center"><p className="text-sm text-gray-500">Pending</p><p className="text-2xl font-bold text-yellow-500">{stats.pending}</p></div>
-        <div className="bg-white shadow p-4 rounded-lg text-center"><p className="text-sm text-gray-500">In Progress</p><p className="text-2xl font-bold text-blue-500">{stats.inProgress}</p></div>
-        <div className="bg-white shadow p-4 rounded-lg text-center"><p className="text-sm text-gray-500">Escalated</p><p className="text-2xl font-bold text-red-500">{stats.escalated}</p></div>
-        <div className="bg-white shadow p-4 rounded-lg text-center"><p className="text-sm text-gray-500">Resolved</p><p className="text-2xl font-bold text-green-500">{stats.resolved}</p></div>
-      </div>
-
-      {analytics && (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white shadow p-4 rounded-lg">
-            <h3 className="font-bold mb-2">Category Breakdown</h3>
-            {analytics.categories.map((c: any) => (
-              <div key={c.category} className="flex justify-between text-sm py-1 border-b">
-                <span>{c.category}</span>
-                <span className="font-bold">{c.count}</span>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-slate-100 border-b-4 border-blue-500">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                </div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total</p>
               </div>
-            ))}
-          </div>
-          <div className="bg-white shadow p-4 rounded-lg">
-            <h3 className="font-bold mb-2">Priority Breakdown</h3>
-            {analytics.priorities.map((p: any) => (
-              <div key={p.priority} className="flex justify-between text-sm py-1 border-b">
-                <span>{p.priority}</span>
-                <span className="font-bold">{p.count}</span>
+              <p className="text-4xl font-extrabold text-slate-900">{stats.total}</p>
+            </div>
+            
+            <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-slate-100 border-b-4 border-amber-500">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pending</p>
               </div>
-            ))}
+              <p className="text-4xl font-extrabold text-slate-900">{stats.pending}</p>
+            </div>
+
+            <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-slate-100 border-b-4 border-blue-400">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-400 flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">In Progress</p>
+              </div>
+              <p className="text-4xl font-extrabold text-slate-900">{stats.inProgress}</p>
+            </div>
+
+            <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-slate-100 border-b-4 border-red-500">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Escalated</p>
+              </div>
+              <p className="text-4xl font-extrabold text-slate-900">{stats.escalated}</p>
+            </div>
+
+            <div className="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-slate-100 border-b-4 border-emerald-500">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Resolved</p>
+              </div>
+              <p className="text-4xl font-extrabold text-slate-900">{stats.resolved}</p>
+            </div>
           </div>
-        </div>
-      )}
 
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">All Maintenance Requests</h2>
-        <select value={filter} onChange={e => setFilter(e.target.value)} className="border-gray-300 rounded-md shadow-sm p-2">
-          <option value="ALL">All Statuses</option>
-          <option value="PENDING">Pending</option>
-          <option value="IN_PROGRESS">In Progress</option>
-          <option value="ESCALATED">Escalated</option>
-          <option value="RESOLVED">Resolved</option>
-        </select>
-      </div>
+          {/* SVG Chart Section */}
+          <div className="bg-white rounded-3xl p-6 shadow-sm ring-1 ring-slate-100">
+            <h3 className="text-lg font-extrabold text-slate-900 mb-6">System Volume (Last 7 Days)</h3>
+            <div className="relative h-48 w-full">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                <defs>
+                  <linearGradient id="areaGradientAdmin" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2563eb" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <polyline
+                  fill="url(#areaGradientAdmin)"
+                  points={`0,100 ${chartPoints} 100,100`}
+                />
+                <polyline
+                  fill="none"
+                  stroke="#2563eb"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points={chartPoints}
+                  className="drop-shadow-md"
+                  vectorEffect="nonScalingStroke"
+                />
+              </svg>
+              <div className="absolute inset-0 flex justify-between items-end pb-2 opacity-50 text-xs font-bold pointer-events-none">
+                <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+              </div>
+            </div>
+          </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issue</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">SLA Timer</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned To</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {viewingRequestId && <RequestTimelineModal requestId={viewingRequestId} onClose={() => setViewingRequestId(null)} />}
-            {requests.map((r) => (
-              <tr key={r.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{r.title}</div>
-                  <div className="text-sm text-gray-500">{r.category} | Priority: {r.priority}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{r.employee?.name || r.employee?.email}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                    ${r.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 
-                      r.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' : 
-                      r.status === 'ESCALATED' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                    {r.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <SlaTimer createdAt={r.createdAt} status={r.status} />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <select 
-                    value={r.technicianId || ''} 
-                    onChange={e => handleAssign(r.id, e.target.value)}
-                    className="border-gray-300 rounded text-sm p-1"
-                  >
-                    <option value="">Unassigned</option>
-                    {technicians.map(t => <option key={t.id} value={t.id}>{t.name || t.email}</option>)}
-                  </select>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                  <button onClick={() => setViewingRequestId(r.id)} className="text-blue-600 hover:text-blue-900">View</button>
-                  {r.status !== 'RESOLVED' && (
-                    <button onClick={() => handleStatusUpdate(r.id, 'RESOLVED')} className="text-green-600 hover:text-green-900">Resolve</button>
-                  )}
-                  {r.status !== 'ESCALATED' && r.status !== 'RESOLVED' && (
-                    <button onClick={() => handleEscalate(r.id)} className="text-red-600 hover:text-red-900">Escalate</button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          {/* Tickets List */}
+          <div className="bg-white rounded-3xl shadow-sm ring-1 ring-slate-100 overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="text-lg font-extrabold text-slate-900">All System Tickets</h3>
+              <select 
+                value={filter} 
+                onChange={e => setFilter(e.target.value)} 
+                className="border-slate-200 rounded-xl shadow-sm py-2 pl-3 pr-8 text-sm font-bold text-slate-700 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="PENDING">Pending</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="ESCALATED">Escalated</option>
+                <option value="RESOLVED">Resolved</option>
+              </select>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-100">
+                <thead className="bg-white">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-400 uppercase tracking-wider">Request</th>
+                    <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-400 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-400 uppercase tracking-wider">SLA Timer</th>
+                    <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-400 uppercase tracking-wider">Personnel</th>
+                    <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-400 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-50">
+                  {filteredRequests.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-slate-500 text-sm font-medium">
+                        No tickets found.
+                      </td>
+                    </tr>
+                  ) : filteredRequests.map((r) => (
+                    <tr key={r.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs shadow-sm ring-1 ring-slate-200 shrink-0">
+                            #{r.id.slice(-4)}
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-900">{r.title}</div>
+                            <div className="text-xs font-medium text-slate-500 mt-0.5">{r.category} &bull; Priority: <span className="font-bold">{r.priority}</span></div>
+                            <div className="text-xs font-medium text-slate-600 mt-1 line-clamp-2">{r.description}</div>
+                            {r.imageUrl && (
+                              <img src={r.imageUrl} alt="Issue" className="mt-2 h-16 w-16 object-cover rounded-lg shadow-sm ring-1 ring-slate-200" />
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <span className={`px-3 py-1 inline-flex text-xs font-bold rounded-full border 
+                          ${r.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-200' : 
+                            r.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-600 border-blue-200' : 
+                            r.status === 'ESCALATED' ? 'bg-red-50 text-red-600 border-red-200' : 
+                            'bg-emerald-50 text-emerald-600 border-emerald-200'}`}>
+                          {r.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-500 font-medium">
+                        <SlaTimer createdAt={r.createdAt} status={r.status} acceptedAt={r.acceptedAt} />
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="text-xs text-slate-900"><span className="font-bold text-slate-500">By:</span> {r.employee?.name || 'Unknown'}</div>
+                        <div className="text-xs text-slate-900 mt-1"><span className="font-bold text-slate-500">To:</span> {r.technician?.name || 'Unassigned'}</div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap text-sm font-bold">
+                        <button onClick={() => setViewingRequestId(r.id)} className="text-blue-600 hover:text-blue-800 transition-colors">
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </>
-      )}
-
-      {activeTab === 'USERS' && (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((u) => (
-                <tr key={u.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{u.name || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                      ${u.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' : 
-                        u.role === 'TECHNICIAN' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
-                      {u.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
+      ) : (
+        /* Users List */
+        <div className="bg-white rounded-3xl shadow-sm ring-1 ring-slate-100 overflow-hidden">
+          <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+            <h3 className="text-lg font-extrabold text-slate-900">Personnel Directory</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-100">
+              <thead className="bg-white">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-400 uppercase tracking-wider">User</th>
+                  <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-400 uppercase tracking-wider">Role</th>
+                  <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-400 uppercase tracking-wider">Joined</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-50">
+                {users.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-12 text-center text-slate-500 text-sm font-medium">
+                      No users found.
+                    </td>
+                  </tr>
+                ) : users.map((u) => (
+                  <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-5">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm shadow-sm border border-white">
+                          {u.name?.charAt(0) || u.email?.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-slate-900">{u.name || 'N/A'}</div>
+                          <div className="text-xs font-medium text-slate-500">{u.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 whitespace-nowrap">
+                      <span className={`px-3 py-1 inline-flex text-xs font-bold rounded-full border 
+                        ${u.role === 'ADMIN' ? 'bg-purple-50 text-purple-600 border-purple-200' : 
+                          u.role === 'TECHNICIAN' ? 'bg-amber-50 text-amber-600 border-amber-200' : 
+                          'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                        {u.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-500 font-medium">
+                      {new Date(u.createdAt).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

@@ -83,6 +83,10 @@ router.patch('/requests/:id/assign', async (req, res) => {
       },
     });
 
+    // Send email to assigned technician
+    const { sendNewRequestEmail } = require('../services/emailService');
+    sendNewRequestEmail(request, request.technician, false).catch(err => console.error("Email failed:", err));
+
     res.json({ success: true, request, message: 'Technician assigned successfully' });
   } catch (error) {
     console.error('Admin assign technician error:', error);

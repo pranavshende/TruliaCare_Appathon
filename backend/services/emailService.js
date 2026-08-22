@@ -18,11 +18,16 @@ const transporter = nodemailer.createTransport({
  * @param {Object} request - The maintenance request object
  * @param {String} adminEmail - The recipient admin's email
  */
-const sendEscalationEmail = async (request, adminEmail = process.env.SMTP_EMAIL) => {
+const sendEscalationEmail = async (request) => {
+  // Fetch actual admin users from DB
+  const admins = await prisma.user.findMany({ where: { role: 'ADMIN' } });
+  if (admins.length === 0) return;
+  const adminEmail = admins[0].email; // Send to the first admin
+
   const mailOptions = {
-    from: `"${process.env.SMPT_NAME || 'Smart Maintenance System'}" <${process.env.SMTP_EMAIL}>`,
-    to: adminEmail, // We default to the admin's own email for demonstration
-    subject: `Maintenance Request #${request.id} Escalated`,
+    from: `"${process.env.SMTP_NAME || 'Smart Maintenance System'}" <${process.env.SMTP_EMAIL}>`,
+    to: adminEmail,
+    subject: `Maintenance Request #${request.id.slice(-4)} Escalated`,
     text: `Maintenance Request Escalation\n\n` +
           `Request ID: ${request.id}\n` +
           `Issue: ${request.title}\n` +
@@ -56,21 +61,25 @@ const sendEscalationEmail = async (request, adminEmail = process.env.SMTP_EMAIL)
         subject: 'Escalation Alert',
         notificationType: 'REQUEST_ESCALATED',
         status: 'FAILED',
-        error: error.message
+        error: error.message || 'Failed'
       }
     });
   }
 };
 
-const sendNewRequestEmail = async (request, technician) => {
+const sendNewRequestEmail = async (request, technician, isAccepted = false) => {
   if (!technician || !technician.email) return;
 
   try {
+    const actionText = isAccepted 
+      ? `You have successfully accepted a maintenance request.`
+      : `A new maintenance request has been assigned to you. Please log in to the dashboard to accept/resolve this ticket.`;
+
     const mailOptions = {
       from: `"${process.env.SMTP_NAME || 'TruliaCare'}" <${process.env.SMTP_EMAIL}>`,
       to: technician.email,
-      subject: `New Ticket Assigned: #${request.id.slice(-4)}`,
-      text: `Hello ${technician.name},\n\nA new maintenance request has been automatically assigned to you.\n\nTitle: ${request.title}\nCategory: ${request.category}\nPriority: ${request.priority}\n\nPlease log in to the dashboard to accept this ticket.`
+      subject: isAccepted ? `Ticket Accepted: #${request.id.slice(-4)}` : `New Ticket Assigned: #${request.id.slice(-4)}`,
+      text: `Hello ${technician.name},\n\n${actionText}\n\nTitle: ${request.title}\nCategory: ${request.category}\nPriority: ${request.priority}`
     };
 
     const info = await transporter.sendMail(mailOptions);

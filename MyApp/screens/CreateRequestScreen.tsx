@@ -14,15 +14,52 @@ export default function CreateRequestScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
 
   const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      quality: 0.5,
-    });
-
-    if (!result.canceled) {
-      setPhoto(result.assets[0]);
-    }
+    Alert.alert(
+      "Upload Photo",
+      "Choose an option",
+      [
+        {
+          text: "Take Photo",
+          onPress: async () => {
+            const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+            if (permissionResult.granted === false) {
+              Alert.alert("Permission required", "You need to allow camera access.");
+              return;
+            }
+            const result = await ImagePicker.launchCameraAsync({
+              mediaTypes: ['images'],
+              allowsEditing: true,
+              quality: 0.5,
+            });
+            if (!result.canceled) {
+              setPhoto(result.assets[0]);
+            }
+          }
+        },
+        {
+          text: "Choose from Library",
+          onPress: async () => {
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (permissionResult.granted === false) {
+              Alert.alert("Permission required", "You need to allow photo library access.");
+              return;
+            }
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ['images'],
+              allowsEditing: true,
+              quality: 0.5,
+            });
+            if (!result.canceled) {
+              setPhoto(result.assets[0]);
+            }
+          }
+        },
+        {
+          text: "Cancel",
+          style: "cancel"
+        }
+      ]
+    );
   };
 
   const handleSubmit = async () => {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
 
@@ -8,7 +8,7 @@ export default function RegisterScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState('EMPLOYEE');
+  const [role, setRole] = useState<'EMPLOYEE' | 'TECHNICIAN' | 'ADMIN'>('EMPLOYEE');
   const [isLoadingLocal, setIsLoadingLocal] = useState(false);
   const { setUser, setToken } = useAuth();
 
@@ -19,6 +19,10 @@ export default function RegisterScreen({ navigation }: any) {
     }
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
       return;
     }
 
@@ -44,99 +48,121 @@ export default function RegisterScreen({ navigation }: any) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Create Account</Text>
-      
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Full Name</Text>
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-          placeholder="Enter your name"
-        />
-      </View>
-      
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="Enter your email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-      </View>
-      
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Enter your password"
-          secureTextEntry
-        />
-      </View>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          
+          <View style={styles.header}>
+            <Text style={styles.title}>Trulía<Text style={{color: '#2563eb'}}>Care</Text></Text>
+            <Text style={styles.subtitle}>Create your account</Text>
+          </View>
 
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Confirm Password</Text>
-        <TextInput
-          style={styles.input}
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          placeholder="Confirm your password"
-          secureTextEntry
-        />
-      </View>
+          <View style={styles.card}>
+            {/* Role Selection */}
+            <Text style={styles.label}>Select Role</Text>
+            <View style={styles.tabContainer}>
+              {(['EMPLOYEE', 'TECHNICIAN', 'ADMIN'] as const).map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  onPress={() => setRole(r)}
+                  style={[styles.tabBtn, role === r && styles.tabBtnActive]}
+                >
+                  <Text style={[styles.tabBtnText, role === r && styles.tabBtnTextActive]}>
+                    {r.charAt(0) + r.slice(1).toLowerCase()}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Full Name</Text>
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="Enter full name"
+                placeholderTextColor="#9ca3af"
+              />
+            </View>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email address</Text>
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Enter email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholderTextColor="#9ca3af"
+              />
+            </View>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Enter password"
+                secureTextEntry
+                placeholderTextColor="#9ca3af"
+              />
+            </View>
 
-      <Text style={styles.label}>Select Role</Text>
-      <View style={styles.roleContainer}>
-        {['EMPLOYEE', 'TECHNICIAN', 'ADMIN'].map(r => (
-          <TouchableOpacity 
-            key={r} 
-            style={[styles.roleBtn, role === r && styles.roleBtnActive]}
-            onPress={() => setRole(r)}
-          >
-            <Text style={[styles.roleBtnText, role === r && styles.roleBtnTextActive]}>
-              {r.charAt(0) + r.slice(1).toLowerCase()}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Confirm Password</Text>
+              <TextInput
+                style={styles.input}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Confirm password"
+                secureTextEntry
+                placeholderTextColor="#9ca3af"
+              />
+            </View>
 
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={handleRegister}
-        disabled={isLoadingLocal}
-      >
-        {isLoadingLocal ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Register</Text>
-        )}
-      </TouchableOpacity>
-      
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.linkText}>Already have an account? Login</Text>
-      </TouchableOpacity>
-    </ScrollView>
+            <TouchableOpacity 
+              style={[styles.button, isLoadingLocal && styles.buttonDisabled]} 
+              onPress={handleRegister}
+              disabled={isLoadingLocal}
+            >
+              {isLoadingLocal ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Create Account</Text>
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.linkContainer}>
+              <Text style={styles.linkText}>Already have an account? <Text style={styles.linkTextBold}>Sign In</Text></Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 20, justifyContent: 'center', backgroundColor: '#f9fafb' },
-  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 30, textAlign: 'center', color: '#111827' },
-  inputContainer: { marginBottom: 20 },
-  label: { fontSize: 14, color: '#374151', marginBottom: 5, fontWeight: '500' },
-  input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 15, fontSize: 16, backgroundColor: '#fff' },
-  button: { backgroundColor: '#2563eb', padding: 15, borderRadius: 8, alignItems: 'center', marginTop: 10 },
+  container: { flex: 1, backgroundColor: '#f8fafc' },
+  scrollContent: { padding: 20, paddingTop: 40, paddingBottom: 40 },
+  header: { alignItems: 'center', marginBottom: 30 },
+  title: { fontSize: 36, fontWeight: '900', color: '#0f172a' },
+  subtitle: { fontSize: 16, color: '#64748b', marginTop: 8, fontWeight: '500' },
+  card: { backgroundColor: '#fff', borderRadius: 24, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 15, elevation: 3 },
+  tabContainer: { flexDirection: 'row', backgroundColor: '#f1f5f9', borderRadius: 12, padding: 4, marginBottom: 24, marginTop: 8 },
+  tabBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
+  tabBtnActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
+  tabBtnText: { fontSize: 13, fontWeight: 'bold', color: '#64748b' },
+  tabBtnTextActive: { color: '#1d4ed8' },
+  inputGroup: { marginBottom: 20 },
+  label: { fontSize: 14, fontWeight: 'bold', color: '#0f172a', marginBottom: 8 },
+  input: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, padding: 16, fontSize: 16, color: '#0f172a' },
+  button: { backgroundColor: '#1d4ed8', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
+  buttonDisabled: { opacity: 0.7 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  linkText: { color: '#2563eb', textAlign: 'center', marginTop: 20, fontSize: 14 },
-  roleContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  roleBtn: { flex: 1, padding: 10, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, marginHorizontal: 2, alignItems: 'center' },
-  roleBtnActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  roleBtnText: { color: '#374151', fontSize: 12, fontWeight: 'bold' },
-  roleBtnTextActive: { color: '#fff' }
+  linkContainer: { marginTop: 24, alignItems: 'center' },
+  linkText: { color: '#64748b', fontSize: 14 },
+  linkTextBold: { color: '#1d4ed8', fontWeight: 'bold' }
 });
