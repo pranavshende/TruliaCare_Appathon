@@ -85,7 +85,10 @@ router.get('/my', async (req, res) => {
         orderBy: { createdAt: 'desc' },
       });
       const availableTickets = await prisma.maintenanceRequest.findMany({
-        where: { status: 'PENDING', technicianId: null },
+        where: { 
+          status: { in: ['PENDING', 'ESCALATED'] }, 
+          technicianId: null 
+        },
         include: { employee: { select: { name: true } } },
         orderBy: { createdAt: 'desc' },
       });
@@ -181,7 +184,11 @@ router.patch('/:id/accept', async (req, res) => {
 
     // Atomic update
     const result = await prisma.maintenanceRequest.updateMany({
-      where: { id: req.params.id, status: 'PENDING', technicianId: null },
+      where: { 
+        id: req.params.id, 
+        status: { in: ['PENDING', 'ESCALATED'] }, 
+        technicianId: null 
+      },
       data: { status: 'IN_PROGRESS', acceptedAt: new Date(), technicianId: req.user.id },
     });
 
