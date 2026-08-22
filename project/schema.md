@@ -1,9 +1,15 @@
+# Database Schema
+
+This project uses Prisma ORM with PostgreSQL.
+
+```prisma
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -11,13 +17,12 @@ model User {
   email     String   @unique
   password  String
   name      String?
-  role      String   @default("EMPLOYEE")
+  role      String   @default("EMPLOYEE") // EMPLOYEE, ADMIN, TECHNICIAN
   isActive  Boolean  @default(true)
-  pushToken String?  // Expo Push Token for mobile notifications
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  requestsCreated MaintenanceRequest[] @relation("EmployeeRequests")
+  requestsCreated  MaintenanceRequest[] @relation("EmployeeRequests")
   requestsAssigned MaintenanceRequest[] @relation("AssignedRequests")
 }
 
@@ -44,7 +49,6 @@ model MaintenanceRequest {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  acceptedAt  DateTime? // Set when technician accepts the ticket
   escalatedAt DateTime?
 
   escalationLogs EscalationLog[]
@@ -58,7 +62,7 @@ model EscalationLog {
   previousStatus String
   newStatus      String
   reason         String?
-  escalatedTo    String? // e.g. Admin ID or Role
+  escalatedTo    String? // SYSTEM or Admin ID
   escalationType String   @default("AUTOMATIC") // AUTOMATIC, MANUAL
   createdAt      DateTime @default(now())
 }
@@ -75,3 +79,4 @@ model EmailLog {
   error            String?
   createdAt        DateTime @default(now())
 }
+```

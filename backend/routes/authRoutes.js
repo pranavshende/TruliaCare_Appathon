@@ -15,7 +15,7 @@ const generateToken = (user) => {
 
 // Register Handle
 router.post('/register', async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, role } = req.body;
   if (!email || !password) {
     return res.status(400).json({ success: false, message: 'Please fill in all required fields' });
   }
@@ -29,12 +29,16 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ success: false, message: 'Email is already registered' });
     }
 
+    const validRoles = ['EMPLOYEE', 'TECHNICIAN', 'ADMIN'];
+    const userRole = validRoles.includes(role) ? role : 'EMPLOYEE';
+
     const hashedPassword = await argon2.hash(password);
     const newUser = await prisma.user.create({
       data: {
         name,
         email: email.toLowerCase(),
-        password: hashedPassword
+        password: hashedPassword,
+        role: userRole
       }
     });
 

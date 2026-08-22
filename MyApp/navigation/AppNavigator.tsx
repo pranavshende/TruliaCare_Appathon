@@ -6,7 +6,8 @@ import { ActivityIndicator, View } from 'react-native';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
-import DashboardScreen from '../screens/DashboardScreen';
+import EmployeeDashboardScreen from '../screens/EmployeeDashboardScreen';
+import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -25,8 +26,12 @@ export default function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          // Authenticated Screens
-          <Stack.Screen name="Dashboard" component={DashboardScreen} />
+          // Authenticated Screens based on role
+          user.role === 'ADMIN' ? (
+            <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+          ) : (
+            <Stack.Screen name="EmployeeDashboard" component={EmployeeDashboardScreen} />
+          )
         ) : (
           // Auth Screens
           <>

@@ -4,25 +4,32 @@ import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
 
 export default function Register() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'EMPLOYEE'
+  });
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoadingLocal, setIsLoadingLocal] = useState(false);
   const [error, setError] = useState('');
   const { setUser, setToken } = useAuth();
   const navigate = useNavigate();
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (password !== confirmPassword) {
+    if (formData.password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
     
-    if (password.length < 6) {
+    if (formData.password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
@@ -32,7 +39,7 @@ export default function Register() {
     try {
       const res = await apiFetch('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify(formData),
       });
 
       const data = await res.json();
@@ -64,12 +71,13 @@ export default function Register() {
               <label htmlFor="name" className="sr-only">Full Name</label>
               <input
                 id="name"
+                name="name"
                 type="text"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Full Name"
-                value={name}
-                onChange={e => setName(e.target.value)}
+                value={formData.name}
+                onChange={handleChange}
                 disabled={isLoadingLocal}
               />
             </div>
@@ -77,12 +85,13 @@ export default function Register() {
               <label htmlFor="email-address" className="sr-only">Email address</label>
               <input
                 id="email-address"
+                name="email"
                 type="email"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border-t-0 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Email address"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
+                value={formData.email}
+                onChange={handleChange}
                 disabled={isLoadingLocal}
               />
             </div>
@@ -90,12 +99,13 @@ export default function Register() {
               <label htmlFor="password" className="sr-only">Password</label>
               <input
                 id="password"
+                name="password"
                 type="password"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border-t-0 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
+                value={formData.password}
+                onChange={handleChange}
                 disabled={isLoadingLocal}
               />
             </div>
@@ -105,12 +115,27 @@ export default function Register() {
                 id="confirm-password"
                 type="password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border-t-0 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border-t-0 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Confirm Password"
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 disabled={isLoadingLocal}
               />
+            </div>
+            <div>
+              <label htmlFor="role" className="sr-only">Role</label>
+              <select
+                id="role"
+                name="role"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                value={formData.role}
+                onChange={handleChange}
+              >
+                <option value="EMPLOYEE">Employee (Submitter)</option>
+                <option value="TECHNICIAN">Technician (Resolver)</option>
+                <option value="ADMIN">Admin (Manager)</option>
+              </select>
             </div>
           </div>
           

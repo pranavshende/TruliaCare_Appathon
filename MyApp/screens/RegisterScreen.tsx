@@ -8,6 +8,7 @@ export default function RegisterScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState('EMPLOYEE');
   const [isLoadingLocal, setIsLoadingLocal] = useState(false);
   const { setUser, setToken } = useAuth();
 
@@ -25,7 +26,7 @@ export default function RegisterScreen({ navigation }: any) {
     try {
       const res = await apiFetch('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, role }),
       });
       const data = await res.json();
       
@@ -90,6 +91,21 @@ export default function RegisterScreen({ navigation }: any) {
         />
       </View>
 
+      <Text style={styles.label}>Select Role</Text>
+      <View style={styles.roleContainer}>
+        {['EMPLOYEE', 'TECHNICIAN', 'ADMIN'].map(r => (
+          <TouchableOpacity 
+            key={r} 
+            style={[styles.roleBtn, role === r && styles.roleBtnActive]}
+            onPress={() => setRole(r)}
+          >
+            <Text style={[styles.roleBtnText, role === r && styles.roleBtnTextActive]}>
+              {r.charAt(0) + r.slice(1).toLowerCase()}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <TouchableOpacity 
         style={styles.button} 
         onPress={handleRegister}
@@ -117,5 +133,10 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 15, fontSize: 16, backgroundColor: '#fff' },
   button: { backgroundColor: '#2563eb', padding: 15, borderRadius: 8, alignItems: 'center', marginTop: 10 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  linkText: { color: '#2563eb', textAlign: 'center', marginTop: 20, fontSize: 14 }
+  linkText: { color: '#2563eb', textAlign: 'center', marginTop: 20, fontSize: 14 },
+  roleContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  roleBtn: { flex: 1, padding: 10, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, marginHorizontal: 2, alignItems: 'center' },
+  roleBtnActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
+  roleBtnText: { color: '#374151', fontSize: 12, fontWeight: 'bold' },
+  roleBtnTextActive: { color: '#fff' }
 });

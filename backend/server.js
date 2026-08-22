@@ -30,7 +30,15 @@ app.use(express.urlencoded({ extended: false }));
 app.use(passport.initialize());
 
 // Routes
-app.use('/api/auth', require('./routes/authRoutes'));
+const authRoutes = require('./routes/authRoutes');
+const employeeRoutes = require('./routes/employeeRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+
+app.use('/api/auth', authRoutes);
+app.use('/api/requests', employeeRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/admin/analytics', analyticsRoutes);
 
 // Basic health check route
 app.get('/', (req, res) => {
@@ -40,4 +48,8 @@ app.get('/', (req, res) => {
 // Start the server
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    
+    // Start Escalation Background Job
+    const { startEscalationJob } = require('./escalationJob');
+    startEscalationJob();
 });
