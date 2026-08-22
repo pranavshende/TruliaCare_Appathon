@@ -7,14 +7,99 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String?
-  role      String   @default("USER")
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  password            String
+  name                String?
+  role                String               @default("employee") // "employee" or "admin"
+  department          String?
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  maintenanceRequests MaintenanceRequest[]
+  notifications       Notification[]
+}
+
+model Category {
+  id                  Int                  @id @default(autoincrement())
+  name                String               @unique // e.g. "IT", "Facilities", "Infrastructure"
+  maintenanceRequests MaintenanceRequest[]
+  technicians         Technician[]
+  slaRules            SlaRule[]
+}
+
+model Technician {
+  id               Int                  @id @default(autoincrement())
+  name             String
+  categoryId       Int
+  category         Category             @relation(fields: [categoryId], references: [id])
+  isAvailable      Boolean              @default(true)
+  assignedRequests MaintenanceRequest[]
+}
+
+model MaintenanceRequest {
+  id                   Int             @id @default(autoincrement())
+  userId               String
+  user                 User            @relation(fields: [userId], references: [id])
+  categoryId           Int?
+  category             Category?       @relation(fields: [categoryId], references: [id])
+  title                String
+  description          String
+  priority             String          @default("Medium") // "Low", "Medium", "High", "Critical"
+  status               String          @default("Pending") // "Pending", "In Progress", "Escalated", "Resolved"
+  assignedTechnicianId Int?
+  assignedTechnician   Technician?     @relation(fields: [assignedTechnicianId], references: [id])
+  escalationLevel      Int             @default(0)
+  slaDueAt             DateTime?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  escalationLogs       EscalationLog[]
+  notifications        Notification[]
+
+  @@index([status])
+  @@index([userId])
+  @@index([categoryId, status])
+}
+
+model EscalationLog {
+  id                Int                @id @default(autoincrement())
+  requestId         Int
+  request           MaintenanceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  fromStatus        String
+  toStatus          String
+  escalationLevel   Int
+  escalatedToRole   String?
+  triggerType       String             // "timer" or "manual"
+  reason            String?
+  createdAt         DateTime           @default(now())
+
+  @@index([requestId])
+}
+
+model Notification {
+  id         Int                 @id @default(autoincrement())
+  userId     String
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestId  Int?
+  request    MaintenanceRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  message    String
+  type       String              @default("in_app") // "email", "push", "in_app"
+  isRead     Boolean             @default(false)
+  createdAt  DateTime            @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model SlaRule {
+  id               Int      @id @default(autoincrement())
+  categoryId       Int
+  category         Category @relation(fields: [categoryId], references: [id])
+  priority         String   // "Low", "Medium", "High", "Critical"
+  thresholdMinutes Int
+  escalateToRole   String   @default("admin")
+
+  @@index([categoryId, priority])
 }
 
 model Session {
