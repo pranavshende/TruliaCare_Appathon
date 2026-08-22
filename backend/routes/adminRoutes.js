@@ -240,4 +240,135 @@ router.get('/users', async (req, res) => {
   }
 });
 
+// Fetch all technicians with their live workload count and availability
+router.get('/technicians/status', async (req, res) => {
+  try {
+    const technicians = await prisma.user.findMany({
+      where: {
+        role: 'TECHNICIAN',
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        pushToken: true,
+        requestsAssigned: {
+          where: {
+            status: { in: ['IN_PROGRESS', 'ESCALATED'] }
+          },
+          select: {
+            id: true,
+            title: true,
+            category: true,
+            priority: true,
+            status: true,
+          }
+        }
+      }
+    });
+
+    const formattedTechnicians = technicians.map(tech => {
+      const activeTicketCount = tech.requestsAssigned.length;
+      
+      let availability = 'AVAILABLE';
+      if (activeTicketCount >= 3) {
+        availability = 'BUSY';
+      } else if (activeTicketCount >= 1) {
+        availability = 'MODERATE';
+      }
+
+      return {
+        id: tech.id,
+        name: tech.name || tech.email,
+        email: tech.email,
+        activeTicketCount: activeTicketCount,
+        availability: availability,
+        currentTickets: tech.requestsAssigned,
+      };
+    });
+
+    return res.json({
+      success: true,
+      data: formattedTechnicians
+    });
+  } catch (err) {
+    console.error('Error fetching technician statuses:', err);
+    return res.status(500).json({ success: false, message: 'Server error fetching technician statuses' });
+  }
+});
+
+// Reassign an escalated or pending ticket to an available technician
+router.put('/requests/:id/reassign', async (req, res) => {
+  const { id } = req.params;
+  const { technicianId, reason } = req.body;
+  const currentUser = req.user;
+
+  if (!technicianId) {
+    return res.status(400).json({ success: false, message: 'Please provide a valid technicianId' });
+  }
+
+  try {
+    const targetTech = await prisma.user.findFirst({
+      where: { id: technicianId, role: 'TECHNICIAN', isActive: true }
+    });
+
+    if (!targetTech) {
+      return res.status(404).json({ success: false, message: 'Selected technician not found or inactive' });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const currentReq = await tx.maintenanceRequest.findUnique({
+        where: { id: id },
+        include: { employee: true }
+      });
+
+      if (!currentReq) {
+        throw new Error('Ticket not found');
+      }
+
+      const previousStatus = currentReq.status;
+
+      const updatedReq = await tx.maintenanceRequest.update({
+        where: { id: id },
+        data: {
+          technicianId: targetTech.id,
+          status: 'IN_PROGRESS',
+          updatedAt: new Date(),
+        },
+        include: { employee: true, technician: true }
+      });
+
+      await tx.escalationLog.create({
+        data: {
+          requestId: id,
+          previousStatus: previousStatus,
+          newStatus: 'IN_PROGRESS',
+          reason: reason || `Admin reassigned ticket to ${targetTech.name || targetTech.email}`,
+          escalatedTo: currentUser.id,
+          escalationType: 'MANUAL',
+        }
+      });
+
+      return updatedReq;
+    });
+
+    const { sendNewRequestEmail } = require('../services/emailService');
+    await sendNewRequestEmail(result, targetTech, false);
+
+    if (req.io) {
+      req.io.emit('ticket_accepted', result);
+    }
+
+    return res.json({
+      success: true,
+      message: `Ticket successfully reassigned to ${targetTech.name || targetTech.email}`,
+      data: result
+    });
+  } catch (err) {
+    console.error('Error reassigning ticket:', err);
+    return res.status(500).json({ success: false, message: err.message || 'Server error reassigning ticket' });
+  }
+});
+
 module.exports = router;

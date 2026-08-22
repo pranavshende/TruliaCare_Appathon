@@ -48,33 +48,42 @@ const startEscalationJob = () => {
             ? `SLA Breached (Not Accepted within 60s)` 
             : `SLA Breached (${req.priority} priority resolution)`;
 
-          await prisma.$transaction([
-            prisma.maintenanceRequest.update({
-              where: { id: req.id },
+          // Execute atomically in a transaction with status check
+          await prisma.$transaction(async (tx) => {
+            // Atomic update: only updates if STILL in original status
+            const updateResult = await tx.maintenanceRequest.updateMany({
+              where: {
+                id: req.id,
+                status: req.status // Prevents duplicate execution if already escalated!
+              },
               data: {
                 status: 'ESCALATED',
-                escalatedAt: new Date()
+                escalatedAt: new Date(),
               }
-            }),
-            prisma.escalationLog.create({
-              data: {
-                requestId: req.id,
-                previousStatus: req.status,
-                newStatus: 'ESCALATED',
-                reason: reason,
-                escalatedTo: 'SYSTEM',
-                escalationType: 'AUTOMATIC'
-              }
-            })
-          ]);
-          console.log(`[Escalation Job] Escalated request #${req.id} - ${reason}`);
-          
-          sendEscalationEmail(req).catch(err => console.error("Email failed:", err));
+            });
 
-          // Simulate Push Notification
-          if (req.technician && req.technician.pushToken) {
-            console.log(`[Push Notification] Dispatched to Technician ${req.technician.name} for Escalated Request #${req.id}`);
-          }
+            // Only insert log and email if update succeeded
+            if (updateResult.count > 0) {
+              await tx.escalationLog.create({
+                data: {
+                  requestId: req.id,
+                  previousStatus: req.status,
+                  newStatus: 'ESCALATED',
+                  reason: reason,
+                  escalatedTo: 'SYSTEM',
+                  escalationType: 'AUTOMATIC'
+                }
+              });
+              
+              console.log(`[Escalation Job] Escalated request #${req.id} - ${reason}`);
+              sendEscalationEmail(req).catch(err => console.error("Email failed:", err));
+
+              // Simulate Push Notification
+              if (req.technician && req.technician.pushToken) {
+                console.log(`[Push Notification] Dispatched to Technician ${req.technician.name} for Escalated Request #${req.id}`);
+              }
+            }
+          });
         }
       }
     } catch (error) {

@@ -2,32 +2,32 @@ import { useState, useEffect } from 'react';
 import { apiFetch } from '../services/api';
 import SlaTimer from './SlaTimer';
 import RequestTimelineModal from './RequestTimelineModal';
+import ReassignModal from './ReassignModal';
 
 export default function AdminDashboard({ activeNav }: { activeNav?: string }) {
   const [requests, setRequests] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [filter, setFilter] = useState('ALL');
   const [viewingRequestId, setViewingRequestId] = useState<string | null>(null);
+  const [reassigningRequestId, setReassigningRequestId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'TICKETS' | 'USERS'>('TICKETS');
   const [dashboardData, setDashboardData] = useState<any>({ stats: {}, unreportedIssues: [], chronicIssues: [] });
 
   const fetchData = async () => {
     try {
-      if (activeTab === 'TICKETS') {
-        const [reqRes, dashRes] = await Promise.all([
-          apiFetch('/admin/requests'),
-          apiFetch('/admin/dashboard')
-        ]);
-        const reqData = await reqRes.json();
-        const dashData = await dashRes.json();
-        
-        if (reqData.success) setRequests(reqData.requests || []);
-        if (dashData.success) setDashboardData(dashData);
-      } else {
-        const res = await apiFetch('/admin/users');
-        const data = await res.json();
-        if (data.success) setUsers(data.users || []);
-      }
+      const [reqRes, dashRes, usersRes] = await Promise.all([
+        apiFetch('/admin/requests'),
+        apiFetch('/admin/dashboard'),
+        apiFetch('/admin/users')
+      ]);
+      
+      const reqData = await reqRes.json();
+      const dashData = await dashRes.json();
+      const usersData = await usersRes.json();
+      
+      if (reqData.success) setRequests(reqData.requests || []);
+      if (dashData.success) setDashboardData(dashData);
+      if (usersData.success) setUsers(usersData.users || []);
     } catch (err) {
       console.error(err);
     }
@@ -35,7 +35,7 @@ export default function AdminDashboard({ activeNav }: { activeNav?: string }) {
 
   useEffect(() => {
     fetchData();
-  }, [activeTab]);
+  }, []);
 
   const stats = dashboardData.stats || { total: 0, pending: 0, inProgress: 0, escalated: 0, resolved: 0, totalCost: 0 };
   const unreportedIssues = dashboardData.unreportedIssues || [];
@@ -57,6 +57,13 @@ export default function AdminDashboard({ activeNav }: { activeNav?: string }) {
       </div>
 
       {viewingRequestId && <RequestTimelineModal requestId={viewingRequestId} onClose={() => setViewingRequestId(null)} />}
+      {reassigningRequestId && (
+        <ReassignModal 
+          requestId={reassigningRequestId} 
+          onClose={() => setReassigningRequestId(null)} 
+          onSuccess={() => { setReassigningRequestId(null); fetchData(); }} 
+        />
+      )}
 
       {/* Internal Tabs mapping to Sidebar if undefined */}
       {(!activeNav) && (
@@ -293,9 +300,16 @@ export default function AdminDashboard({ activeNav }: { activeNav?: string }) {
                         <div className="text-xs text-slate-900 mt-1"><span className="font-bold text-slate-500">To:</span> {r.technician?.name || 'Unassigned'}</div>
                       </td>
                       <td className="px-6 py-5 whitespace-nowrap text-sm font-bold">
-                        <button onClick={() => setViewingRequestId(r.id)} className="text-blue-600 hover:text-blue-800 transition-colors">
-                          View Details
-                        </button>
+                        <div className="flex space-x-3">
+                          <button onClick={() => setViewingRequestId(r.id)} className="text-blue-600 hover:text-blue-800 transition-colors">
+                            View Details
+                          </button>
+                          {(r.status === 'PENDING' || r.status === 'ESCALATED') && (
+                            <button onClick={() => setReassigningRequestId(r.id)} className="text-amber-600 hover:text-amber-800 transition-colors ml-4">
+                              Reassign
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

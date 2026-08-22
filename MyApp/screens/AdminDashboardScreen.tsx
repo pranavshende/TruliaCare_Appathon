@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
 import SlaTimer from '../components/SlaTimer';
 import RequestTimelineModal from '../components/RequestTimelineModal';
+import ReassignModal from '../components/ReassignModal';
 
 export default function AdminDashboardScreen() {
   const { user, logout } = useAuth();
@@ -11,6 +12,7 @@ export default function AdminDashboardScreen() {
   const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, escalated: 0, resolved: 0 });
   const [filter, setFilter] = useState('ALL');
   const [viewingRequestId, setViewingRequestId] = useState<string | null>(null);
+  const [reassigningRequestId, setReassigningRequestId] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -79,6 +81,13 @@ export default function AdminDashboardScreen() {
         onClose={() => setViewingRequestId(null)} 
       />
 
+      <ReassignModal 
+        visible={!!reassigningRequestId} 
+        requestId={reassigningRequestId || ''} 
+        onClose={() => setReassigningRequestId(null)} 
+        onSuccess={() => { setReassigningRequestId(null); fetchData(); }} 
+      />
+
       <FlatList
         data={filter === 'ALL' ? requests : requests.filter(r => r.status === filter)}
         keyExtractor={item => item.id}
@@ -91,9 +100,18 @@ export default function AdminDashboardScreen() {
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <SlaTimer createdAt={item.createdAt} status={item.status} />
-              <TouchableOpacity onPress={() => setViewingRequestId(item.id)} style={styles.viewBtn}>
-                <Text style={styles.viewBtnText}>View Details</Text>
-              </TouchableOpacity>
+              
+              <View style={styles.actionButtonsRow}>
+                {(item.status === 'PENDING' || item.status === 'ESCALATED') && (
+                  <TouchableOpacity onPress={() => setReassigningRequestId(item.id)} style={styles.reassignBtn}>
+                    <Text style={styles.reassignBtnText}>Reassign</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => setViewingRequestId(item.id)} style={styles.viewBtn}>
+                  <Text style={styles.viewBtnText}>Details</Text>
+                </TouchableOpacity>
+              </View>
+
               {item.status !== 'RESOLVED' && (
                 <TouchableOpacity onPress={() => handleResolve(item.id)} style={styles.resolveButton}>
                   <Text style={styles.resolveButtonText}>Mark Resolved</Text>
@@ -129,6 +147,9 @@ const styles = StyleSheet.create({
   requestDate: { marginTop: 4, fontSize: 14, color: '#6b7280' },
   resolveButton: { marginTop: 10, backgroundColor: '#10b981', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 4, alignItems: 'center' },
   resolveButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
-  viewBtn: { marginTop: 10, backgroundColor: '#e0e7ff', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 4 },
+  actionButtonsRow: { flexDirection: 'row', marginTop: 10 },
+  reassignBtn: { backgroundColor: '#fef3c7', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 4, marginRight: 8 },
+  reassignBtnText: { color: '#b45309', fontSize: 12, fontWeight: 'bold' },
+  viewBtn: { backgroundColor: '#e0e7ff', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 4 },
   viewBtnText: { color: '#4f46e5', fontSize: 12, fontWeight: 'bold' }
 });
