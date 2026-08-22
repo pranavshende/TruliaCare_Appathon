@@ -2,7 +2,7 @@ const argon2 = require('argon2');
 const prisma = require('../prismaClient');
 
 async function main() {
-  console.log('🌱 Starting database seed for TruliaCare Maintenance & Escalation System (Updated Schema)...');
+  console.log('🌱 Starting database seed for TruliaCare Maintenance & Escalation System (with pushToken support)...');
 
   // 1. Clean existing records in reverse dependency order
   console.log('Cleaning existing records...');
@@ -25,6 +25,7 @@ async function main() {
       password: defaultPassword,
       role: 'EMPLOYEE',
       isActive: true,
+      pushToken: 'ExponentPushToken[mock_employee_token_12345]',
     },
   });
 
@@ -35,6 +36,7 @@ async function main() {
       password: defaultPassword,
       role: 'EMPLOYEE',
       isActive: true,
+      pushToken: 'ExponentPushToken[mock_employee2_token_67890]',
     },
   });
 
@@ -45,6 +47,7 @@ async function main() {
       password: adminPassword,
       role: 'ADMIN',
       isActive: true,
+      pushToken: 'ExponentPushToken[mock_admin_token_112233]',
     },
   });
 
@@ -55,6 +58,7 @@ async function main() {
       password: defaultPassword,
       role: 'TECHNICIAN',
       isActive: true,
+      pushToken: 'ExponentPushToken[mock_tech_it_445566]',
     },
   });
 
@@ -65,6 +69,7 @@ async function main() {
       password: defaultPassword,
       role: 'TECHNICIAN',
       isActive: true,
+      pushToken: 'ExponentPushToken[mock_tech_facility_778899]',
     },
   });
 
@@ -75,6 +80,7 @@ async function main() {
       password: defaultPassword,
       role: 'TECHNICIAN',
       isActive: true,
+      pushToken: 'ExponentPushToken[mock_tech_electrical_990011]',
     },
   });
 

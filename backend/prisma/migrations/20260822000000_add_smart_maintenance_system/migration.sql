@@ -9,6 +9,7 @@ CREATE TABLE "User" (
     "name" TEXT,
     "role" TEXT NOT NULL DEFAULT 'EMPLOYEE',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "pushToken" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
