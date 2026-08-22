@@ -21,7 +21,7 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   const token = await getAuthToken();
   
   const headers = new Headers(options.headers);
-  if (!headers.has('Content-Type')) {
+  if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
 

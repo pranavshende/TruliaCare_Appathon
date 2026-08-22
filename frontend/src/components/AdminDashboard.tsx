@@ -8,26 +8,30 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, escalated: 0, resolved: 0 });
   const [analytics, setAnalytics] = useState<any>(null);
   const [technicians, setTechnicians] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [filter, setFilter] = useState('ALL');
   const [viewingRequestId, setViewingRequestId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'USERS'>('DASHBOARD');
 
   const fetchData = async () => {
     try {
-      const [statsRes, reqsRes, techRes, analyticsRes] = await Promise.all([
+      const [statsRes, reqsRes, techRes, analyticsRes, usersRes] = await Promise.all([
         apiFetch('/admin/dashboard'),
         apiFetch(`/admin/requests?status=${filter}`),
         apiFetch('/admin/technicians'),
-        apiFetch('/admin/analytics')
+        apiFetch('/admin/analytics'),
+        apiFetch('/admin/users')
       ]);
 
-      const [statsData, reqsData, techData, analyticsData] = await Promise.all([
-        statsRes.json(), reqsRes.json(), techRes.json(), analyticsRes.json()
+      const [statsData, reqsData, techData, analyticsData, usersData] = await Promise.all([
+        statsRes.json(), reqsRes.json(), techRes.json(), analyticsRes.json(), usersRes.json()
       ]);
 
       if (statsData.success) setStats(statsData.stats);
       if (reqsData.success) setRequests(reqsData.requests);
       if (techData.success) setTechnicians(techData.technicians);
       if (analyticsData.success) setAnalytics(analyticsData.analytics);
+      if (usersData.success) setUsers(usersData.users);
     } catch (err) {
       console.error(err);
     }
@@ -65,7 +69,27 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-5 gap-4">
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('DASHBOARD')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'DASHBOARD' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+          >
+            Overview & Requests
+          </button>
+          <button
+            onClick={() => setActiveTab('USERS')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'USERS' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+          >
+            All Users
+          </button>
+        </nav>
+      </div>
+
+      {activeTab === 'DASHBOARD' && (
+        <>
+          <div className="grid grid-cols-5 gap-4">
         <div className="bg-white shadow p-4 rounded-lg text-center"><p className="text-sm text-gray-500">Total Requests</p><p className="text-2xl font-bold">{stats.total}</p></div>
         <div className="bg-white shadow p-4 rounded-lg text-center"><p className="text-sm text-gray-500">Pending</p><p className="text-2xl font-bold text-yellow-500">{stats.pending}</p></div>
         <div className="bg-white shadow p-4 rounded-lg text-center"><p className="text-sm text-gray-500">In Progress</p><p className="text-2xl font-bold text-blue-500">{stats.inProgress}</p></div>
@@ -163,6 +187,39 @@ export default function AdminDashboard() {
           </tbody>
         </table>
       </div>
+        </>
+      )}
+
+      {activeTab === 'USERS' && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {users.map((u) => (
+                <tr key={u.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{u.name || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                      ${u.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' : 
+                        u.role === 'TECHNICIAN' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
+                      {u.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

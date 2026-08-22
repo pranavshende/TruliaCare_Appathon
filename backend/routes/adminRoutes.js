@@ -162,7 +162,28 @@ router.get('/technicians', async (req, res) => {
 
     res.json({ success: true, technicians });
   } catch (error) {
-    console.error('Admin get technicians error:', error);
+    console.error('Get technicians error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Get all users
+router.get('/users', async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ success: true, users });
+  } catch (error) {
+    console.error('Get users error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

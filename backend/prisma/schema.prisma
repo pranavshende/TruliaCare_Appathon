@@ -34,6 +34,7 @@ model MaintenanceRequest {
   description String
   category    String   // IT, FACILITY, ELECTRICAL, PLUMBING, HVAC, OTHER
   priority    String   // LOW, MEDIUM, HIGH, CRITICAL
+  imageUrl    String?  // URL of the uploaded photo
   status      String   @default("PENDING") // PENDING, IN_PROGRESS, ESCALATED, RESOLVED
 
   employeeId  String

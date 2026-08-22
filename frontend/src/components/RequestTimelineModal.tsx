@@ -52,6 +52,12 @@ export default function RequestTimelineModal({ requestId, onClose }: { requestId
               <span>Priority: {request.priority}</span>
               <span>Status: <span className="font-bold">{request.status}</span></span>
             </div>
+            {request.imageUrl && (
+              <div className="mt-4">
+                <p className="text-sm font-bold text-gray-700 mb-2">Attached Photo:</p>
+                <img src={request.imageUrl} alt="Issue" className="max-w-full h-auto rounded-lg shadow-sm max-h-64 object-contain" />
+              </div>
+            )}
           </div>
 
           <h4 className="font-bold mb-4 text-lg">Activity History</h4>

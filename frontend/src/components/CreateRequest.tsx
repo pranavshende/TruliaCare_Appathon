@@ -6,6 +6,7 @@ export default function CreateRequest({ onSuccess }: { onSuccess: () => void }) 
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('IT');
   const [priority, setPriority] = useState('LOW');
+  const [photo, setPhoto] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -15,9 +16,18 @@ export default function CreateRequest({ onSuccess }: { onSuccess: () => void }) 
     setError('');
     
     try {
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('category', category);
+      formData.append('priority', priority);
+      if (photo) {
+        formData.append('photo', photo);
+      }
+
       const res = await apiFetch('/requests', {
         method: 'POST',
-        body: JSON.stringify({ title, description, category, priority })
+        body: formData
       });
       const data = await res.json();
       if (data.success) {
@@ -66,6 +76,10 @@ export default function CreateRequest({ onSuccess }: { onSuccess: () => void }) 
               <option value="CRITICAL">Critical</option>
             </select>
           </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Issue Photo</label>
+          <input type="file" accept="image/*" onChange={e => setPhoto(e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
         </div>
         <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700">
           {loading ? 'Submitting...' : 'Submit Request'}

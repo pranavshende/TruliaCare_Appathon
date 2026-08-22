@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { apiFetch } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -45,6 +45,12 @@ export default function RequestTimelineModal({ requestId, visible, onClose }: { 
                 <Text style={styles.title}>{request.title}</Text>
                 <Text style={styles.desc}>{request.description}</Text>
                 <Text style={styles.meta}>Status: {request.status}</Text>
+                {request.imageUrl && (
+                  <View style={styles.imageContainer}>
+                    <Text style={styles.imageLabel}>Attached Photo:</Text>
+                    <Image source={{ uri: request.imageUrl }} style={styles.attachedImage} />
+                  </View>
+                )}
               </View>
 
               <Text style={styles.historyTitle}>Activity History</Text>
@@ -110,5 +116,8 @@ const styles = StyleSheet.create({
   timelineCard: { backgroundColor: '#fff', padding: 12, borderRadius: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2, marginLeft: 10 },
   timelineHeader: { fontWeight: 'bold' },
   timelineTime: { fontSize: 12, color: '#6366f1', marginVertical: 2 },
-  timelineReason: { fontSize: 12, color: '#6b7280' }
+  timelineReason: { fontSize: 12, color: '#6b7280' },
+  imageContainer: { marginTop: 12 },
+  imageLabel: { fontSize: 14, fontWeight: 'bold', color: '#374151', marginBottom: 4 },
+  attachedImage: { width: '100%', height: 200, borderRadius: 8, resizeMode: 'cover', marginTop: 8 }
 });
