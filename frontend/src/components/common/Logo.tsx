@@ -18,7 +18,7 @@ export function Logo({ dark = false, subtitle = true }: { dark?: boolean; subtit
       </span>
       <div className="leading-tight">
         <p className={`text-xl font-extrabold tracking-tight ${dark ? 'text-white' : 'text-slate-900'}`}>
-          Trulia<span className="text-blue-500">Care</span>
+          Resolve<span className="text-blue-500">Go</span>
         </p>
         {subtitle && (
           <p className={`text-xs font-medium ${dark ? 'text-blue-200/80' : 'text-slate-500'}`}>

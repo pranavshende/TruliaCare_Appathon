@@ -48,7 +48,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
               <span className="text-blue-400">Faster</span> Resolutions.
             </h1>
             <p className="mt-2.5 text-xs text-blue-100/80 leading-relaxed max-w-sm">
-              TruliaCare helps your organization manage facility and IT issues efficiently with
+              ResolveGo helps your organization manage facility and IT issues efficiently with
               real-time tracking, SLA monitoring and intelligent escalations.
             </p>
 

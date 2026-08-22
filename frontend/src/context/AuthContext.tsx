@@ -1,30 +1,6 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { apiFetch, setAuthToken, getAuthToken } from '../services/api';
-
-type User = {
-  id: string;
-  email: string;
-  name?: string;
-  role: string;
-} | null;
-
-interface AuthContextType {
-  user: User;
-  setUser: (user: User) => void;
-  isLoading: boolean;
-  logout: () => void;
-  token: string | null;
-  setToken: (token: string | null) => void;
-}
-
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  setUser: () => {},
-  isLoading: true,
-  logout: () => {},
-  token: null,
-  setToken: () => {},
-});
+import { useState, useEffect, type ReactNode } from 'react';
+import { apiFetch, setAuthToken, getAuthToken, onUnauthorized } from '../services/api';
+import { AuthContext, type User } from './auth-context';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User>(null);
@@ -78,11 +54,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initAuth();
   }, []);
 
+  useEffect(() => {
+    // A background request (e.g. a dashboard poll) can hit a 401 after the
+    // token expires. Clear the signed-in user here so ProtectedRoute drops
+    // back to /login instead of leaving a stale session on screen.
+    const unsubscribe = onUnauthorized(() => setUser(null));
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   return (
     <AuthContext.Provider value={{ user, setUser, isLoading, logout, token, setToken }}>
       {children}
     </AuthContext.Provider>
   );
 };
-
-export const useAuth = () => useContext(AuthContext);

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Modal } from '../common/Modal';
 import { escalateRequest } from '../../services/requests';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../context/useToast';
 import type { MaintenanceRequest } from '../../types';
 
 export function EscalateModal({

@@ -1,15 +1,12 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { apiFetch } from '../services/api';
 import { AuthLayout } from './auth/AuthLayout';
 import { ShieldIcon } from './common/Logo';
-import { useToast } from '../context/ToastContext';
-import { RoleToggle } from './common/RoleToggle';
-import type { Role } from '../types';
+import { useToast } from '../context/useToast';
 
 export default function Login() {
-  const [role, setRole] = useState<Role>('EMPLOYEE');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -28,7 +25,7 @@ export default function Login() {
     try {
       const res = await apiFetch('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password, role }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
@@ -53,10 +50,8 @@ export default function Login() {
           <ShieldIcon className="w-5.5 h-5.5" />
         </span>
         <h2 className="text-lg font-extrabold text-slate-900 text-center">Welcome Back</h2>
-        <p className="mt-0.5 text-xs text-slate-500 text-center">Sign in to continue to TruliaCare</p>
+        <p className="mt-0.5 text-xs text-slate-500 text-center">Sign in to continue to ResolveGo</p>
       </div>
-
-      <RoleToggle value={role} onChange={setRole} />
 
       <form className="space-y-3 mt-3" onSubmit={handleSubmit}>
         <div>

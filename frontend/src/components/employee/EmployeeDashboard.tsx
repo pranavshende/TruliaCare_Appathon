@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 import { Sidebar } from '../common/Sidebar';
 import { SummaryCards } from '../common/SummaryCards';
 import { StatusBadge, PriorityBadge } from '../common/StatusBadge';
 import { DeskIllustration } from '../common/DeskIllustration';
+import { RequestsOverviewChart } from '../common/RequestsOverviewChart';
 import { RequestDetailModal } from '../RequestDetailModal';
 import { CreateRequestModal } from './CreateRequestModal';
 import { getMyRequestById, getMyRequests } from '../../services/requests';
@@ -64,6 +65,7 @@ export default function EmployeeDashboard() {
   const [page, setPage] = useState(1);
 
   const load = useCallback(async (silent = false) => {
+    if (silent && document.hidden) return;
     if (!silent) setLoading(true);
     try {
       const data = await getMyRequests();
@@ -118,6 +120,7 @@ export default function EmployeeDashboard() {
   };
 
   const firstName = (user?.name || user?.email || 'there').split(' ')[0];
+  const isTechnician = user?.role === 'TECHNICIAN';
 
   return (
     <div className="min-h-screen flex bg-slate-50">
@@ -126,6 +129,7 @@ export default function EmployeeDashboard() {
         onClose={() => setSidebarOpen(false)}
         onRaiseRequest={() => setCreateOpen(true)}
         notificationsCount={stats.pending + stats.escalated}
+        variant={isTechnician ? 'technician' : 'employee'}
       />
 
       <div className="flex-1 min-w-0 flex flex-col">
@@ -164,7 +168,7 @@ export default function EmployeeDashboard() {
                 <p className="text-slate-500">
                   Welcome, <span className="font-semibold text-slate-800">{user?.name || user?.email}</span>
                 </p>
-                <p className="text-xs text-slate-400">{user?.role === 'TECHNICIAN' ? 'Technician' : 'User'}</p>
+                <p className="text-xs text-slate-400">{isTechnician ? 'Technician' : 'Employee'}</p>
               </div>
 
               <button
@@ -185,16 +189,22 @@ export default function EmployeeDashboard() {
         </header>
 
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-          <div className="relative overflow-hidden bg-gradient-to-r from-blue-50 via-white to-white rounded-2xl ring-1 ring-slate-100 shadow-sm px-6 sm:px-8 py-8 flex items-center justify-between gap-6">
-            <div className="min-w-0">
-              <p className="text-slate-500 font-medium">Welcome back,</p>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-0.5">
-                {firstName} <span aria-hidden>👋</span>
-              </h1>
-              <p className="text-sm text-slate-500 mt-2">Here's an overview of your maintenance requests.</p>
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch">
+            <div className="lg:col-span-2 relative overflow-hidden bg-gradient-to-r from-blue-50 via-white to-white rounded-2xl ring-1 ring-slate-100 shadow-sm px-6 sm:px-8 py-8 flex items-center justify-between gap-6">
+              <div className="min-w-0">
+                <p className="text-slate-500 font-medium">Welcome back,</p>
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-0.5">
+                  {firstName} <span aria-hidden>👋</span>
+                </h1>
+                <p className="text-sm text-slate-500 mt-2">Here's an overview of your maintenance requests.</p>
+              </div>
+              <div className="hidden sm:block w-32 h-32 shrink-0">
+                <DeskIllustration />
+              </div>
             </div>
-            <div className="hidden sm:block w-48 h-32 shrink-0">
-              <DeskIllustration />
+
+            <div className="lg:col-span-3">
+              <RequestsOverviewChart requests={requests} />
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { apiFetch } from '../services/api';
 import { AuthLayout } from './auth/AuthLayout';
 import { ShieldIcon } from './common/Logo';
@@ -63,7 +63,7 @@ export default function Register() {
           <ShieldIcon className="w-5.5 h-5.5" />
         </span>
         <h2 className="text-lg font-extrabold text-slate-900 text-center">Create Account</h2>
-        <p className="mt-0.5 text-xs text-slate-500 text-center">Join TruliaCare to raise &amp; track requests</p>
+        <p className="mt-0.5 text-xs text-slate-500 text-center">Join ResolveGo to raise &amp; track requests</p>
       </div>
 
       <RoleToggle value={role} onChange={setRole} />

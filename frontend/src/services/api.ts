@@ -12,9 +12,20 @@ export const getAuthToken = () => {
   return localStorage.getItem('token');
 };
 
+// Lets AuthContext know a request came back 401 mid-session (e.g. an expired
+// token during a background poll) so it can clear the signed-in user and let
+// ProtectedRoute redirect to /login, instead of leaving a dead session on screen.
+type UnauthorizedListener = () => void;
+const unauthorizedListeners = new Set<UnauthorizedListener>();
+
+export const onUnauthorized = (listener: UnauthorizedListener) => {
+  unauthorizedListeners.add(listener);
+  return () => unauthorizedListeners.delete(listener);
+};
+
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   const token = getAuthToken();
-  
+
   const headers = new Headers(options.headers);
   if (!headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
@@ -30,7 +41,11 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   });
 
   if (response.status === 401) {
+    const hadToken = Boolean(token);
     setAuthToken(null);
+    if (hadToken) {
+      unauthorizedListeners.forEach((listener) => listener());
+    }
   }
 
   return response;

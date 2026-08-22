@@ -1,18 +1,11 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-
-type ToastKind = 'success' | 'error' | 'warning' | 'info';
+import { useCallback, useState, type ReactNode } from 'react';
+import { ToastContext, type ToastKind } from './toast-context';
 
 interface Toast {
   id: number;
   message: string;
   kind: ToastKind;
 }
-
-interface ToastContextType {
-  showToast: (message: string, kind?: ToastKind) => void;
-}
-
-const ToastContext = createContext<ToastContextType>({ showToast: () => {} });
 
 const KIND_STYLES: Record<ToastKind, string> = {
   success: 'bg-emerald-600',
@@ -31,6 +24,10 @@ const KIND_ICON: Record<ToastKind, string> = {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  const dismiss = useCallback((id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
   const showToast = useCallback((message: string, kind: ToastKind = 'success') => {
     const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, message, kind }]);
@@ -42,21 +39,32 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-full max-w-sm px-4 sm:px-0">
+      <div
+        className="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-full max-w-sm px-4 sm:px-0"
+        role="status"
+        aria-live="polite"
+      >
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`flex items-center gap-3 text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg ring-1 ring-black/5 ${KIND_STYLES[t.kind]} animate-[fadeIn_0.15s_ease-out]`}
+            className={`flex items-center gap-3 text-white text-sm font-medium pl-4 pr-3 py-3 rounded-xl shadow-lg ring-1 ring-black/5 ${KIND_STYLES[t.kind]} animate-[fadeIn_0.15s_ease-out]`}
           >
             <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d={KIND_ICON[t.kind]} />
             </svg>
-            <span>{t.message}</span>
+            <span className="flex-1">{t.message}</span>
+            <button
+              onClick={() => dismiss(t.id)}
+              className="shrink-0 text-white/70 hover:text-white rounded p-0.5"
+              aria-label="Dismiss notification"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         ))}
       </div>
     </ToastContext.Provider>
   );
 }
-
-export const useToast = () => useContext(ToastContext);

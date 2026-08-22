@@ -3,7 +3,7 @@ import { Modal } from '../common/Modal';
 import { CATEGORIES, PRIORITIES } from '../../types';
 import type { Category, MaintenanceRequest, Priority } from '../../types';
 import { createRequest } from '../../services/requests';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../context/useToast';
 
 export function CreateRequestModal({
   open,
