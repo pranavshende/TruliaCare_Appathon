@@ -2,13 +2,22 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
+import { AuthLayout } from './auth/AuthLayout';
+import { ShieldIcon } from './common/Logo';
+import { useToast } from '../context/ToastContext';
+import { RoleToggle } from './common/RoleToggle';
+import type { Role } from '../types';
 
 export default function Login() {
+  const [role, setRole] = useState<Role>('EMPLOYEE');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoadingLocal, setIsLoadingLocal] = useState(false);
   const [error, setError] = useState('');
   const { setUser, setToken } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -19,7 +28,7 @@ export default function Login() {
     try {
       const res = await apiFetch('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, role }),
       });
 
       const data = await res.json();
@@ -30,141 +39,140 @@ export default function Login() {
       } else {
         setError(data.message || 'Invalid credentials');
       }
-    } catch (err) {
-      setError('Network error');
+    } catch {
+      setError('Network error. Please try again.');
     } finally {
       setIsLoadingLocal(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-50 flex items-center justify-center px-4 py-12">
-      {/* Decorative diagonal bands */}
-      <div
-        className="pointer-events-none absolute -top-24 -left-24 w-[70vw] h-[55vw] max-h-[600px] max-w-[900px] bg-orange-500"
-        style={{ clipPath: 'polygon(0 0, 65% 0, 30% 100%, 0 100%)' }}
-      />
-      <div
-        className="pointer-events-none absolute -bottom-32 -right-24 w-[70vw] h-[55vw] max-h-[600px] max-w-[900px] bg-blue-800"
-        style={{ clipPath: 'polygon(100% 100%, 100% 0, 70% 100%, 35% 100%)' }}
-      />
-
-      {/* Decorative dot grids */}
-      <div className="pointer-events-none absolute top-10 right-10 grid grid-cols-3 gap-2 opacity-60">
-        {Array.from({ length: 9 }).map((_, i) => (
-          <span key={i} className="w-1.5 h-1.5 rounded-full bg-orange-400" />
-        ))}
-      </div>
-      <div className="pointer-events-none absolute bottom-10 left-10 grid grid-cols-3 gap-2 opacity-60">
-        {Array.from({ length: 9 }).map((_, i) => (
-          <span key={i} className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-        ))}
+    <AuthLayout>
+      <div className="flex flex-col items-center mb-4">
+        <span className="flex items-center justify-center w-11 h-11 rounded-full bg-blue-50 text-blue-600 mb-2.5">
+          <ShieldIcon className="w-5.5 h-5.5" />
+        </span>
+        <h2 className="text-lg font-extrabold text-slate-900 text-center">Welcome Back</h2>
+        <p className="mt-0.5 text-xs text-slate-500 text-center">Sign in to continue to TruliaCare</p>
       </div>
 
-      {/* Card */}
-      <div className="relative w-full max-w-md">
-        <span className="absolute -top-1 left-8 right-1/2 h-1.5 rounded-full bg-orange-500" />
-        <span className="absolute -bottom-1 right-8 left-1/2 h-1.5 rounded-full bg-blue-700" />
+      <RoleToggle value={role} onChange={setRole} />
 
-        <div className="relative bg-white rounded-2xl shadow-xl px-8 py-10 sm:px-10">
-          <div className="flex flex-col items-center">
-            <div className="w-16 h-16 flex items-center justify-center rounded-2xl border-2 border-orange-500 rotate-45 mb-6">
-              <svg
-                className="w-7 h-7 text-orange-500 -rotate-45"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
+      <form className="space-y-3 mt-3" onSubmit={handleSubmit}>
+        <div>
+          <label htmlFor="email-address" className="block text-xs font-semibold text-slate-700 mb-1">
+            Email Address
+          </label>
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+              <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+            </span>
+            <input
+              id="email-address"
+              type="email"
+              required
+              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-11 pr-4 text-sm text-slate-800 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter your email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoadingLocal}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="password" className="block text-xs font-semibold text-slate-700 mb-1">
+            Password
+          </label>
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+              <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 10-8 0v4h8z"
                 />
               </svg>
-            </div>
-
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 text-center mb-8">
-              <span className="text-orange-500">Sign in</span> to your account
-            </h2>
+            </span>
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              required
+              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-11 pr-11 text-sm text-slate-800 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoadingLocal}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((s) => !s)}
+              className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600"
+              tabIndex={-1}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? (
+                <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                </svg>
+              ) : (
+                <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              )}
+            </button>
           </div>
-
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="email-address" className="sr-only">Email address</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-orange-500">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                    />
-                  </svg>
-                </span>
-                <input
-                  id="email-address"
-                  type="email"
-                  required
-                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-12 pr-4 text-slate-800 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 sm:text-sm"
-                  placeholder="Email address"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  disabled={isLoadingLocal}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="password" className="sr-only">Password</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-orange-500">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 10-8 0v4h8z"
-                    />
-                  </svg>
-                </span>
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-12 pr-4 text-slate-800 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 sm:text-sm"
-                  placeholder="Password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  disabled={isLoadingLocal}
-                />
-              </div>
-            </div>
-
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-
-            <div>
-              <button
-                type="submit"
-                disabled={isLoadingLocal}
-                className={`w-full flex justify-center py-3 px-4 rounded-xl text-sm font-semibold text-white shadow-md transition duration-150 ease-in-out ${
-                  isLoadingLocal
-                    ? 'bg-blue-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-blue-700 to-blue-500 hover:from-blue-800 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-                }`}
-              >
-                {isLoadingLocal ? 'Signing in...' : 'Sign In'}
-              </button>
-            </div>
-
-            <div className="text-sm text-center text-slate-700">
-              Need an account?{' '}
-              <Link to="/register" className="font-semibold text-orange-500 hover:text-orange-600">
-                Register
-              </Link>
-            </div>
-          </form>
         </div>
-      </div>
-    </div>
+
+        <div className="flex items-center justify-between text-xs">
+          <label className="flex items-center gap-1.5 text-slate-600 select-none cursor-pointer">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            />
+            Remember me
+          </label>
+          <button
+            type="button"
+            onClick={() => showToast('Please contact your administrator to reset your password.', 'info')}
+            className="font-semibold text-blue-600 hover:text-blue-700"
+          >
+            Forgot password?
+          </button>
+        </div>
+
+        {error && (
+          <p className="text-red-600 text-xs text-center bg-red-50 rounded-lg py-1.5 px-3">{error}</p>
+        )}
+
+        <button
+          type="submit"
+          disabled={isLoadingLocal}
+          className={`w-full flex justify-center py-2.5 px-4 rounded-xl text-sm font-semibold text-white shadow-md transition duration-150 ease-in-out ${
+            isLoadingLocal
+              ? 'bg-blue-400 cursor-not-allowed'
+              : 'bg-blue-700 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+          }`}
+        >
+          {isLoadingLocal ? 'Signing in...' : 'Sign In'}
+        </button>
+
+        <p className="text-xs text-center text-slate-600 pt-1">
+          Don&apos;t have an account?{' '}
+          <Link to="/register" className="font-semibold text-blue-600 hover:text-blue-700">
+            Register
+          </Link>
+        </p>
+      </form>
+    </AuthLayout>
   );
 }
